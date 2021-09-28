@@ -64,8 +64,16 @@ If you want to use our model in the context of other datasets or training loops,
 
 ## Citation
 If you use this model in academic work please feel free to cite our paper
-
-TODO
+```bash
+@misc{grigsby2021longrange,
+      title={Long-Range Transformers for Dynamic Spatiotemporal Forecasting}, 
+      author={Jake Grigsby and Zhe Wang and Yanjun Qi},
+      year={2021},
+      eprint={2109.12218},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
 
 ![st-embed-fig](readme_media/embed.png)
 
