@@ -1,6 +1,6 @@
 # Spacetimeformer Multivariate Forecasting
 
-This repository contains the code for the paper, "**Long-Range Transformers for Dynamic Spatiotemporal Forecasting**", Grigsby, Wang and Qi, 2021.
+This repository contains the code for the paper, "**Long-Range Transformers for Dynamic Spatiotemporal Forecasting**", Grigsby, Wang and Qi, 2021. ([arxiv](https://arxiv.org/abs/2109.12218))
 
 ![spatiotemporal_embedding](readme_media/st-graph.png)
 
@@ -19,7 +19,10 @@ pip install -e .
 This installs a python package called ``transformer_timeseries``.
 
 ## Dataset Setup
-TODO
+CSV datsets like AL Solar, NY-TX Weather, Exchange Rates, and the Toy example are included with the source code of this repo. 
+
+Larger datasets should be downloaded and their folders placed in the `data/` directory. You can find them with this [google drive link](https://drive.google.com/drive/folders/1NcCIjuWbkvAi1MZUpYBIr7eYhaowvU7B?usp=sharing). Note that the `metr-la` and `pems-bay` data is directly from [this repo](https://github.com/liyaguang/DCRNN) - all we've done is skip a step for you and provide the raw train, val, test, `*.npz` files our dataset code expects.
+
 
 ## Recreating Experiments with Our Training Script
 The main training functionality for `spacetimeformer` and most baselines considered in the paper can be found in the `train.py` script. The training loop is based on the [`pytorch_lightning`](https://pytorch-lightning.rtfd.io/en/latest/) framework.
@@ -47,6 +50,12 @@ Dataset Names:
 <img src="readme_media/radar_edit.png" width="220">
 </p>
 
+### Logging with Weights and Biases
+We used [wandb](https://wandb.ai/home) to track all of results during development, and you can do the same by hardcoding the correct organization/username and project name in the `train.py` file. Comments indicate the location
+near the top of the `main` method. wandb logging can then be enabled with the `--wandb` flag.
+
+There are two automated figures that can be saved to wandb between epochs. These include the attention diagrams (e.g., Figure 4 of our paper) and prediction plots (e.g., Figure 6 of our paper). Enable attention diagrams with `--attn_plot` and prediction curves with `--plot`.
+
 ### Example Spacetimeformer Training Commands
 Toy Dataset
 ```bash
@@ -55,7 +64,27 @@ python train.py timeformer toy2 --run_name spatiotemporal_toy2 \
 --gpus 0 1 2 3 --batch_size 32 --start_token_len 4 --n_heads 4 \
 --grad_clip_norm 1 --early_stopping --trials 1
 ```
-TODO
+
+Metr-LA
+```bash
+python train.py timeformer metr-la --start_token_len 3 --batch_size 32 \
+--gpus 0 1 2 3 --grad_clip_norm 1 --d_model 128 --d_ff 512 --enc_layers 5 \
+--dec_layers 4 --dropout_emb .3 --dropout_ff .3 --dropout_qkv 0 \ 
+--run_name spatiotemporal_metr-la --base_lr 1e-3 --l2_coeff 1e-2 \
+```
+
+Temporal Attention Ablation with Negative Log Likelihood Loss on NY-TX Weather ("asos") with WandB Loggin and Figures
+```bash
+python train.py timeformer asos --context_points 160 --target_points 40 \ 
+--start_token_len 8 --grad_clip_norm 1 --gpus 0 --batch_size 128 \ 
+--d_model 200 --d_ff 800 --enc_layers 3 --dec_layers 3 \
+--local_self_attn none --local_cross_attn none --l2_coeff .01 \
+--dropout_emb .1 --run_name temporal_asos_160-40-nll --loss nll \
+--time_resolution 1 --dropout_ff .2 --n_heads 8 --trials 3 \ 
+--embed_method temporal --early_stopping --wandb --attn_plot --plot
+```
+
+
 
 
 ## Using Spacetimeformer in Other Applications
@@ -64,7 +93,8 @@ If you want to use our model in the context of other datasets or training loops,
 
 ## Citation
 If you use this model in academic work please feel free to cite our paper
-```bash
+
+```
 @misc{grigsby2021longrange,
       title={Long-Range Transformers for Dynamic Spatiotemporal Forecasting}, 
       author={Jake Grigsby and Zhe Wang and Yanjun Qi},
@@ -76,6 +106,7 @@ If you use this model in academic work please feel free to cite our paper
 ```
 
 ![st-embed-fig](readme_media/embed.png)
+
 
 
 
