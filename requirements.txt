@@ -9,4 +9,10 @@ python-dateutil>=2.8.0
 performer-pytorch
 tqdm>=4.36.1
 nystrom-attention
-pytorch-lightning
+pytorch-lightning==1.3.8
+netCDF4
+scikit-learn==0.23.2
+omegaconf
+seaborn
+opencv-python
+wandb

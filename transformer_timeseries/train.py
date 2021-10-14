@@ -10,7 +10,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import transformer_timeseries as tt
 
-_MODELS = ["timeformer", "mtgnn", "lstm", "lstnet", "linear"]
+_MODELS = ["spacetimeformer", "mtgnn", "lstm", "lstnet", "linear"]
 
 _DSETS = [
     "asos",
@@ -27,6 +27,11 @@ _DSETS = [
 def create_parser():
     model = sys.argv[1]
     dset = sys.argv[2]
+
+    # Throw error now before we get confusing parser issues
+    assert model in _MODELS, f"Unrecognized model (`{model}`). Options include: {_MODELS}"
+    assert dset in _DSETS, f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
+
     parser = ArgumentParser()
     parser.add_argument("model")
     parser.add_argument("dset")
@@ -50,8 +55,8 @@ def create_parser():
         tt.lstnet_model.LSTNet_Forecaster.add_cli(parser)
     elif model == "mtgnn":
         tt.mtgnn_model.MTGNN_Forecaster.add_cli(parser)
-    elif model == "timeformer":
-        tt.timeformer_model.Timeformer_Forecaster.add_cli(parser)
+    elif model == "spacetimeformer":
+        tt.spacetimeformer_model.Spacetimeformer_Forecaster.add_cli(parser)
     elif model == "linear":
         tt.linear_model.Linear_Forecaster.add_cli(parser)
 
@@ -162,8 +167,8 @@ def create_model(config):
             loss=config.loss,
             linear_window=config.linear_window,
         )
-    elif config.model == "timeformer":
-        forecaster = tt.timeformer_model.Timeformer_Forecaster(
+    elif config.model == "spacetimeformer":
+        forecaster = tt.spacetimeformer_model.Spacetimeformer_Forecaster(
             d_y=y_dim,
             d_x=x_dim,
             start_token_len=config.start_token_len,
@@ -378,7 +383,7 @@ def main(args):
                 test_samples, total_samples=min(8, config.batch_size)
             )
         )
-    if config.wandb and config.model == "timeformer" and config.attn_plot:
+    if config.wandb and config.model == "spacetimeformer" and config.attn_plot:
 
         callbacks.append(
             tt.plot.AttentionMatrixCallback(
@@ -429,9 +434,6 @@ if __name__ == "__main__":
     # CLI
     parser = create_parser()
     args = parser.parse_args()
-
-    assert args.model in _MODELS
-    assert args.dset in _DSETS
 
     if args.wandb:
         import wandb

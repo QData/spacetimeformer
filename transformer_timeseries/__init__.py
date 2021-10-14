@@ -8,5 +8,5 @@ from . import plot
 from . import lstnet_model
 from . import lstm_model
 from . import mtgnn_model
-from . import timeformer_model
+from . import spacetimeformer_model
 from . import linear_model

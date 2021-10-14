@@ -1,4 +1,5 @@
 from typing import List
+import warnings
 
 import torch
 from torch import nn
@@ -7,7 +8,19 @@ import pytorch_lightning as pl
 
 import transformer_timeseries as tt
 
-from torch_geometric_temporal.nn import MTGNN
+try:
+    from torch_geometric_temporal.nn import MTGNN
+except ImportError:
+
+    class MTGNN:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(
+                "\t  Missing `torch_geometric_temporal` package required to use MTGNN\n\
+                  model. This is optional for all other model types and not installed\n\
+                  with `pip install -r requirements.txt` because of CUDA versioning issues.\n\
+                  Please see https://github.com/benedekrozemberczki/pytorch_geometric_temporal/blob/master/docs/source/notes/installation.rst\n\
+                  for installation instructions."
+            )
 
 
 class MTGNN_Forecaster(tt.Forecaster):

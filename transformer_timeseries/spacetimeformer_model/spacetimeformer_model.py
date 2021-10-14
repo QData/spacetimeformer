@@ -9,7 +9,7 @@ import torchmetrics
 import transformer_timeseries as tt
 
 
-class Timeformer_Forecaster(tt.Forecaster):
+class Spacetimeformer_Forecaster(tt.Forecaster):
     def __init__(
         self,
         d_y: int = 1,
@@ -51,7 +51,7 @@ class Timeformer_Forecaster(tt.Forecaster):
         verbose=True,
     ):
         super().__init__(l2_coeff=l2_coeff, loss=loss, linear_window=linear_window)
-        self.timeformer = tt.timeformer_model.nn.Timeformer(
+        self.spacetimeformer = tt.spacetimeformer_model.nn.Spacetimeformer(
             d_y=d_y,
             d_x=d_x,
             start_token_len=start_token_len,
@@ -91,7 +91,7 @@ class Timeformer_Forecaster(tt.Forecaster):
         self.class_loss_imp = class_loss_imp
 
         qprint = lambda _msg_: print(_msg_) if verbose else None
-        qprint(f" *** Timeformer Summary: *** ")
+        qprint(f" *** Spacetimeformer Summary: *** ")
         qprint(f"\tModel Dim: {d_model}")
         qprint(f"\tFF Dim: {d_ff}")
         qprint(f"\tEnc Layers: {e_layers}")
@@ -104,7 +104,7 @@ class Timeformer_Forecaster(tt.Forecaster):
         qprint(f"\tL2 Coeff: {l2_coeff}")
         qprint(f"\tWarmup Steps: {warmup_steps}")
         qprint(f"\tNormalization Scheme: {norm}")
-        qprint(f" ***                     *** ")
+        qprint(f" ***                         *** ")
 
     @property
     def train_step_forward_kwargs(self):
@@ -192,7 +192,7 @@ class Timeformer_Forecaster(tt.Forecaster):
             dim=1,
         ).float()
 
-        output, (logits, labels), attn = self.timeformer(
+        output, (logits, labels), attn = self.spacetimeformer(
             x_enc=batch_x,
             x_mark_enc=batch_x_mark,
             x_dec=dec_inp,

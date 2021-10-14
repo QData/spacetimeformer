@@ -9,11 +9,14 @@ Transformers are a high-performance approach to sequence-to-sequence timeseries 
 ### We will be adding additional instructions, example commands and dataset links in the coming days.
 
 ## Installation 
-This repository was written and tested for **python 3.7** and **pytorch 1.9.0**.
+This repository was written and tested for **python 3.8** and **pytorch 1.9.0**.
 
 ```bash
 git clone https://github.com/UVA-MachineLearningBioinformatics/spacetimeformer.git
 cd spacetimeformer
+conda create -n spacetimeformer python==3.8
+source activate spacetimeformer
+pip install -r requirements.txt
 pip install -e .
 ```
 This installs a python package called ``transformer_timeseries``.
@@ -34,8 +37,8 @@ Model Names:
 - `lstnet`: a more typical RNN/Conv1D model for multivariate forecasting. Based on the attention-free implementation of [LSTNet](https://github.com/laiguokun/LSTNet).
 - `lstm`: a typical encoder-decoder LSTM without attention. We use scheduled sampling to anneal teacher forcing throughout training.
 - `mtgnn`: a hybrid GNN that learns its graph structure from data. For more information refer to the [paper](https://arxiv.org/abs/2005.11650). We use the implementation from [`pytorch_geometric_temporal`](https://github.com/benedekrozemberczki/pytorch_geometric_temporal)
-- `timeformer`: We gave our model the arbitrary name "timeformer" early in development. The first draft of the paper ultimately called it the "spacetimeformer", but currently we have not yet changed its name in the codebase.
-    - note that the "Temporal" ablation discussed in the paper is a special case of the `timeformer` model. Set the `embed_method = temporal`. Timeformer has many configurable options and we try to provide a thorough explanation with the commandline `-h` instructions.
+- `spacetimeformer`: the multivariate long-range transformer architecture discussed in our paper.
+    - note that the "Temporal" ablation discussed in the paper is a special case of the `spacetimeformer` model. Set the `embed_method = temporal`. Spacetimeformer has many configurable options and we try to provide a thorough explanation with the commandline `-h` instructions.
 
 
 Dataset Names:
@@ -59,7 +62,7 @@ There are two automated figures that can be saved to wandb between epochs. These
 ### Example Spacetimeformer Training Commands
 Toy Dataset
 ```bash
-python train.py timeformer toy2 --run_name spatiotemporal_toy2 \
+python train.py spacetimeformer toy2 --run_name spatiotemporal_toy2 \
 --d_model 100 --d_ff 400 --enc_layers 4 --dec_layers 4 \
 --gpus 0 1 2 3 --batch_size 32 --start_token_len 4 --n_heads 4 \
 --grad_clip_norm 1 --early_stopping --trials 1
@@ -67,7 +70,7 @@ python train.py timeformer toy2 --run_name spatiotemporal_toy2 \
 
 Metr-LA
 ```bash
-python train.py timeformer metr-la --start_token_len 3 --batch_size 32 \
+python train.py spacetimeformer metr-la --start_token_len 3 --batch_size 32 \
 --gpus 0 1 2 3 --grad_clip_norm 1 --d_model 128 --d_ff 512 --enc_layers 5 \
 --dec_layers 4 --dropout_emb .3 --dropout_ff .3 --dropout_qkv 0 \ 
 --run_name spatiotemporal_metr-la --base_lr 1e-3 --l2_coeff 1e-2 \
@@ -75,7 +78,7 @@ python train.py timeformer metr-la --start_token_len 3 --batch_size 32 \
 
 Temporal Attention Ablation with Negative Log Likelihood Loss on NY-TX Weather ("asos") with WandB Loggin and Figures
 ```bash
-python train.py timeformer asos --context_points 160 --target_points 40 \ 
+python train.py spacetimeformer asos --context_points 160 --target_points 40 \ 
 --start_token_len 8 --grad_clip_norm 1 --gpus 0 --batch_size 128 \ 
 --d_model 200 --d_ff 800 --enc_layers 3 --dec_layers 3 \
 --local_self_attn none --local_cross_attn none --l2_coeff .01 \
@@ -88,7 +91,7 @@ python train.py timeformer asos --context_points 160 --target_points 40 \
 
 
 ## Using Spacetimeformer in Other Applications
-If you want to use our model in the context of other datasets or training loops, you will probably want to go a step lower than the `timeformer_model.Timeformer_Forecaster` pytorch-lightning wrapper. Please see `timeformer_model.nn.Timeformer`.
+If you want to use our model in the context of other datasets or training loops, you will probably want to go a step lower than the `spacetimeformer_model.Spacetimeformer_Forecaster` pytorch-lightning wrapper. Please see `spacetimeformer_model.nn.Spacetimeformer`.
 ![arch-fig](readme_media/arch.png)
 
 ## Citation

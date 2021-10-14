@@ -8,7 +8,7 @@ import transformer_timeseries as tt
 from .encoder import VariableDownsample
 
 
-class TimeformerEmbedding(nn.Module):
+class SpacetimeformerEmbedding(nn.Module):
     def __init__(
         self,
         d_y,

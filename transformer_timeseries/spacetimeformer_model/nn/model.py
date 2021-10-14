@@ -18,12 +18,12 @@ from .attn import (
     BenchmarkAttention,
     NystromSelfAttention,
 )
-from .embed import TimeformerEmbedding
+from .embed import SpacetimeformerEmbedding
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-class Timeformer(nn.Module):
+class Spacetimeformer(nn.Module):
     def __init__(
         self,
         d_y: int = 1,
@@ -71,7 +71,7 @@ class Timeformer(nn.Module):
         self.embed_method = embed_method
 
         # Encoding
-        self.embedding = TimeformerEmbedding(
+        self.embedding = SpacetimeformerEmbedding(
             d_y=d_y,
             d_x=d_x,
             d_model=d_model,
