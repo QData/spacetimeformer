@@ -2,7 +2,6 @@ Frequently Asked Questions
 ========================================
 
 
-
 ## Via python library call API
 + [api_usage](https://spacetimeformer.readthedocs.io/en/latest/1start/api_usage.html)
 

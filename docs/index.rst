@@ -5,7 +5,7 @@ spacetimeformer Documentation
    :maxdepth: 6
    :caption: Get Started
 
-   Installation <1start/installation>
+   Installation <1start/installation.md>
    Basic API Usage <1start/api_usage.md>
    Input/Output Format <1start/data_in_out.md>
 
@@ -13,14 +13,14 @@ spacetimeformer Documentation
    :maxdepth: 6
    :caption: Notebook tutorials
 
-   Tutorial 1: Simple use <2demo/fastDemo.ipynb>
+   Tutorial 1: Simple use <2demo/Demo.ipynb>
 
 
 .. toctree::
    :maxdepth: 6
    :caption: About
 
-   1start/basic-Intro.rst
+   1start/basic-Intro.md
    1start/references.md
    1start/FAQ.md
 
@@ -29,5 +29,5 @@ spacetimeformer Documentation
    :glob:
    :caption: Developer Guide
 
-   Contributing <1start/support>  
-   apidoc/spacetimeformer
+   Contributing <1start/support.md>  
+   apidoc/transformer_timeseries
