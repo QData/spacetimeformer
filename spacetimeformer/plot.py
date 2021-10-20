@@ -12,7 +12,7 @@ import random
 import torch
 import wandb
 
-from transformer_timeseries.eval_stats import mape
+from spacetimeformer.eval_stats import mape
 
 
 def _assert_squeeze(x):

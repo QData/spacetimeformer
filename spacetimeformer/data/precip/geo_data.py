@@ -169,7 +169,7 @@ class CONUS_Precip(StationGridDset):
 
 
 if __name__ == "__main__":
-    import transformer_timeseries as tt
+    import spacetimeformer as stf
 
     precip_data = GeoDset()
     from torch.utils.data import DataLoader

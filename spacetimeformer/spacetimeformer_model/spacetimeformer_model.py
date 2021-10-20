@@ -6,10 +6,10 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 import torchmetrics
 
-import transformer_timeseries as tt
+import spacetimeformer as stf
 
 
-class Spacetimeformer_Forecaster(tt.Forecaster):
+class Spacetimeformer_Forecaster(stf.Forecaster):
     def __init__(
         self,
         d_y: int = 1,
@@ -51,7 +51,7 @@ class Spacetimeformer_Forecaster(tt.Forecaster):
         verbose=True,
     ):
         super().__init__(l2_coeff=l2_coeff, loss=loss, linear_window=linear_window)
-        self.spacetimeformer = tt.spacetimeformer_model.nn.Spacetimeformer(
+        self.spacetimeformer = stf.spacetimeformer_model.nn.Spacetimeformer(
             d_y=d_y,
             d_x=d_x,
             start_token_len=start_token_len,
@@ -208,7 +208,7 @@ class Spacetimeformer_Forecaster(tt.Forecaster):
         optimizer = torch.optim.AdamW(
             self.parameters(), lr=self.base_lr, weight_decay=self.l2_coeff
         )
-        scheduler = tt.lr_scheduler.WarmupReduceLROnPlateau(
+        scheduler = stf.lr_scheduler.WarmupReduceLROnPlateau(
             optimizer,
             init_lr=self.init_lr,
             peak_lr=self.base_lr,

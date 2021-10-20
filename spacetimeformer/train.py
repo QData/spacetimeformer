@@ -8,7 +8,7 @@ import torch
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-import transformer_timeseries as tt
+import spacetimeformer as stf
 
 _MODELS = ["spacetimeformer", "mtgnn", "lstm", "lstnet", "linear"]
 
@@ -37,30 +37,30 @@ def create_parser():
     parser.add_argument("dset")
 
     if dset == "precip":
-        tt.data.precip.GeoDset.add_cli(parser)
-        tt.data.precip.CONUS_Precip.add_cli(parser)
-        tt.data.DataModule.add_cli(parser)
+        stf.data.precip.GeoDset.add_cli(parser)
+        stf.data.precip.CONUS_Precip.add_cli(parser)
+        stf.data.DataModule.add_cli(parser)
     elif dset == "metr-la" or dset == "pems-bay":
-        tt.data.metr_la.METR_LA_Data.add_cli(parser)
-        tt.data.DataModule.add_cli(parser)
+        stf.data.metr_la.METR_LA_Data.add_cli(parser)
+        stf.data.DataModule.add_cli(parser)
     else:
-        tt.data.CSVTimeSeries.add_cli(parser)
-        tt.data.CSVTorchDset.add_cli(parser)
-        tt.data.DataModule.add_cli(parser)
+        stf.data.CSVTimeSeries.add_cli(parser)
+        stf.data.CSVTorchDset.add_cli(parser)
+        stf.data.DataModule.add_cli(parser)
 
     if model == "lstm":
-        tt.lstm_model.LSTM_Forecaster.add_cli(parser)
-        tt.callbacks.TeacherForcingAnnealCallback.add_cli(parser)
+        stf.lstm_model.LSTM_Forecaster.add_cli(parser)
+        stf.callbacks.TeacherForcingAnnealCallback.add_cli(parser)
     elif model == "lstnet":
-        tt.lstnet_model.LSTNet_Forecaster.add_cli(parser)
+        stf.lstnet_model.LSTNet_Forecaster.add_cli(parser)
     elif model == "mtgnn":
-        tt.mtgnn_model.MTGNN_Forecaster.add_cli(parser)
+        stf.mtgnn_model.MTGNN_Forecaster.add_cli(parser)
     elif model == "spacetimeformer":
-        tt.spacetimeformer_model.Spacetimeformer_Forecaster.add_cli(parser)
+        stf.spacetimeformer_model.Spacetimeformer_Forecaster.add_cli(parser)
     elif model == "linear":
-        tt.linear_model.Linear_Forecaster.add_cli(parser)
+        stf.linear_model.Linear_Forecaster.add_cli(parser)
 
-    tt.callbacks.TimeMaskedLossCallback.add_cli(parser)
+    stf.callbacks.TimeMaskedLossCallback.add_cli(parser)
 
     parser.add_argument("--early_stopping", action="store_true")
     parser.add_argument("--wandb", action="store_true")
@@ -111,7 +111,7 @@ def create_model(config):
     assert y_dim is not None
 
     if config.model == "lstm":
-        forecaster = tt.lstm_model.LSTM_Forecaster(
+        forecaster = stf.lstm_model.LSTM_Forecaster(
             # encoder
             d_x=x_dim,
             d_y=y_dim,
@@ -127,7 +127,7 @@ def create_model(config):
             linear_window=config.linear_window,
         )
     elif config.model == "mtgnn":
-        forecaster = tt.mtgnn_model.MTGNN_Forecaster(
+        forecaster = stf.mtgnn_model.MTGNN_Forecaster(
             d_y=y_dim,
             d_x=x_dim,
             context_points=config.context_points,
@@ -152,7 +152,7 @@ def create_model(config):
             linear_window=config.linear_window,
         )
     elif config.model == "lstnet":
-        forecaster = tt.lstnet_model.LSTNet_Forecaster(
+        forecaster = stf.lstnet_model.LSTNet_Forecaster(
             context_points=config.context_points,
             d_y=y_dim,
             hidRNN=config.hidRNN,
@@ -168,7 +168,7 @@ def create_model(config):
             linear_window=config.linear_window,
         )
     elif config.model == "spacetimeformer":
-        forecaster = tt.spacetimeformer_model.Spacetimeformer_Forecaster(
+        forecaster = stf.spacetimeformer_model.Spacetimeformer_Forecaster(
             d_y=y_dim,
             d_x=x_dim,
             start_token_len=config.start_token_len,
@@ -206,7 +206,7 @@ def create_model(config):
             time_emb_dim=config.time_emb_dim,
         )
     elif config.model == "linear":
-        forecaster = tt.linear_model.Linear_Forecaster(
+        forecaster = stf.linear_model.Linear_Forecaster(
             context_points=config.context_points,
             learning_rate=config.learning_rate,
             l2_coeff=config.l2_coeff,
@@ -224,11 +224,11 @@ def create_dset(config):
     if config.dset == "metr-la" or config.dset == "pems-bay":
         if config.dset == "pems-bay":
             assert (
-                "pems-bay" in config.data_path
+                "pems_bay" in config.data_path
             ), "Make sure to switch to the pems-bay file!"
-        data = tt.data.metr_la.METR_LA_Data(config.data_path)
-        DATA_MODULE = tt.data.DataModule(
-            datasetCls=tt.data.metr_la.METR_LA_Torch,
+        data = stf.data.metr_la.METR_LA_Data(config.data_path)
+        DATA_MODULE = stf.data.DataModule(
+            datasetCls=stf.data.metr_la.METR_LA_Torch,
             dataset_kwargs={"data": data},
             batch_size=config.batch_size,
             workers=config.workers,
@@ -237,9 +237,9 @@ def create_dset(config):
         NULL_VAL = 0.0
 
     elif config.dset == "precip":
-        dset = tt.data.precip.GeoDset(dset_dir=config.dset_dir, var="precip")
-        DATA_MODULE = tt.data.DataModule(
-            datasetCls=tt.data.precip.CONUS_Precip,
+        dset = stf.data.precip.GeoDset(dset_dir=config.dset_dir, var="precip")
+        DATA_MODULE = stf.data.DataModule(
+            datasetCls=stf.data.precip.CONUS_Precip,
             dataset_kwargs={
                 "dset": dset,
                 "context_points": config.context_points,
@@ -281,12 +281,12 @@ def create_dset(config):
                 "New Zealand",
                 "Singapore",
             ]
-        dset = tt.data.CSVTimeSeries(
+        dset = stf.data.CSVTimeSeries(
             data_path=data_path,
             target_cols=target_cols,
         )
-        DATA_MODULE = tt.data.DataModule(
-            datasetCls=tt.data.CSVTorchDset,
+        DATA_MODULE = stf.data.DataModule(
+            datasetCls=stf.data.CSVTorchDset,
             dataset_kwargs={
                 "csv_time_series": dset,
                 "context_points": config.context_points,
@@ -304,7 +304,7 @@ def create_dset(config):
 
 def create_callbacks(config):
     saving = pl.callbacks.ModelCheckpoint(
-        dirpath=f"./data/TT_model_checkpoints/{config.run_name}_{''.join([str(random.randint(0,9)) for _ in range(9)])}",
+        dirpath=f"./data/stf_model_checkpoints/{config.run_name}_{''.join([str(random.randint(0,9)) for _ in range(9)])}",
         monitor="val/mse",
         filename=f"{config.run_name}" + "{epoch:02d}-{val/loss:.2f}",
         save_top_k=1,
@@ -323,7 +323,7 @@ def create_callbacks(config):
 
     if config.model == "lstm":
         callbacks.append(
-            tt.callbacks.TeacherForcingAnnealCallback(
+            stf.callbacks.TeacherForcingAnnealCallback(
                 start=config.teacher_forcing_start,
                 end=config.teacher_forcing_end,
                 epochs=config.teacher_forcing_anneal_epochs,
@@ -331,7 +331,7 @@ def create_callbacks(config):
         )
     if config.time_mask_loss:
         callbacks.append(
-            tt.callbacks.TimeMaskedLossCallback(
+            stf.callbacks.TimeMaskedLossCallback(
                 start=config.time_mask_start,
                 end=config.target_points,
                 steps=config.time_mask_anneal_steps,
@@ -356,7 +356,7 @@ def main(args):
             project=project,
             entity=entity,
             config=args,
-            dir="./data/TT_LOG_DIR",
+            dir="./data/stf_LOG_DIR",
             reinit=True,
         )
         config = wandb.config
@@ -379,14 +379,14 @@ def main(args):
 
     if config.wandb and config.plot:
         callbacks.append(
-            tt.plot.PredictionPlotterCallback(
+            stf.plot.PredictionPlotterCallback(
                 test_samples, total_samples=min(8, config.batch_size)
             )
         )
     if config.wandb and config.model == "spacetimeformer" and config.attn_plot:
 
         callbacks.append(
-            tt.plot.AttentionMatrixCallback(
+            stf.plot.AttentionMatrixCallback(
                 test_samples,
                 layer=0,
                 total_samples=min(16, config.batch_size),
@@ -401,7 +401,7 @@ def main(args):
     # Logging
     if config.wandb:
         logger = pl.loggers.WandbLogger(
-            experiment=experiment, save_dir="./data/TT_LOG_DIR"
+            experiment=experiment, save_dir="./data/stf_LOG_DIR"
         )
         logger.log_hyperparams(config)
 

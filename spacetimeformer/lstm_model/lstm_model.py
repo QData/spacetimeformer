@@ -5,7 +5,7 @@ from torch import nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
-import transformer_timeseries as tt
+import spacetimeformer as stf
 
 
 class LSTM_Encoder(nn.Module):
@@ -53,7 +53,7 @@ class LSTM_Decoder(nn.Module):
 
 
 class LSTM_Seq2Seq(nn.Module):
-    def __init__(self, t2v: tt.Time2Vec, encoder: LSTM_Encoder, decoder: LSTM_Decoder):
+    def __init__(self, t2v: stf.Time2Vec, encoder: LSTM_Encoder, decoder: LSTM_Decoder):
         super().__init__()
         self.t2v = t2v
         self.encoder = encoder
@@ -96,7 +96,7 @@ class LSTM_Seq2Seq(nn.Module):
         return outputs
 
 
-class LSTM_Forecaster(tt.Forecaster):
+class LSTM_Forecaster(stf.Forecaster):
     def __init__(
         self,
         d_x: int = 6,
@@ -118,7 +118,7 @@ class LSTM_Forecaster(tt.Forecaster):
             loss=loss,
             linear_window=linear_window,
         )
-        self.t2v = tt.Time2Vec(input_dim=d_x, embed_dim=time_emb_dim)
+        self.t2v = stf.Time2Vec(input_dim=d_x, embed_dim=time_emb_dim)
 
         input_dim = (time_emb_dim if time_emb_dim > 0 else d_x) + d_y
 

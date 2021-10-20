@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-import transformer_timeseries as tt
+import spacetimeformer as stf
 
 from .encoder import VariableDownsample
 
@@ -27,7 +27,7 @@ class SpacetimeformerEmbedding(nn.Module):
         # account for added local position indicator "relative time"
         d_x += 1
 
-        self.x_emb = tt.Time2Vec(d_x, embed_dim=time_emb_dim * d_x)
+        self.x_emb = stf.Time2Vec(d_x, embed_dim=time_emb_dim * d_x)
 
         if self.method == "temporal":
             y_emb_inp_dim = d_y + (time_emb_dim * d_x)

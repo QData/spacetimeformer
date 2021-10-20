@@ -19,7 +19,7 @@ source activate spacetimeformer
 pip install -r requirements.txt
 pip install -e .
 ```
-This installs a python package called ``transformer_timeseries``.
+This installs a python package called ``spacetimeformer``.
 
 ## Dataset Setup
 CSV datsets like AL Solar, NY-TX Weather, Exchange Rates, and the Toy example are included with the source code of this repo. 

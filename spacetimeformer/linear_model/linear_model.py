@@ -3,12 +3,12 @@ from torch import nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
-import transformer_timeseries as tt
+import spacetimeformer as stf
 
 from .linear_ar import LinearModel
 
 
-class Linear_Forecaster(tt.Forecaster):
+class Linear_Forecaster(stf.Forecaster):
     def __init__(
         self,
         context_points: int,

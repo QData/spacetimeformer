@@ -3,6 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+"""
+LSTNet: https://github.com/laiguokun/LSTNet/blob/master/models/LSTNet.py
+"""
+
+
 class LSTNet(nn.Module):
     def __init__(
         self,
@@ -26,10 +31,7 @@ class LSTNet(nn.Module):
         self.Ck = CNN_kernel
         self.skip = skip
 
-        # It looks like you are expected to get these hyperparameters
-        # just right to make pt an int. The default params don't do that.
-        # This is discussed on the github and the author says to just cast
-        # pt to an int, so that's what we'll do.
+        # cast to int based on github issue
         self.pt = int((self.P - self.Ck) / self.skip)
         self.hw = highway_window
         self.conv1 = nn.Conv2d(1, self.hidC, kernel_size=(self.Ck, self.m))
