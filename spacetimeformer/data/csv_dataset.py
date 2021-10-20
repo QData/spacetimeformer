@@ -10,7 +10,7 @@ import numpy as np
 import pytorch_lightning as pl
 from sklearn.preprocessing import StandardScaler
 
-import transformer_timeseries as tt
+import spacetimeformer as stf
 
 
 class CSVTimeSeries:
@@ -32,7 +32,7 @@ class CSVTimeSeries:
         )
 
         time_df = pd.to_datetime(raw_df["Datetime"], format="%Y-%m-%d %H:%M")
-        df = tt.data.timefeatures.time_features(time_df, raw_df)
+        df = stf.data.timefeatures.time_features(time_df, raw_df)
 
         assert (df["Datetime"] > pd.Timestamp.min).all()
         assert (df["Datetime"] < pd.Timestamp.max).all()

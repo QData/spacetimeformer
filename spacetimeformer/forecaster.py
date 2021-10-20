@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from torch.distributions import Normal
 
-import transformer_timeseries as tt
+import spacetimeformer as stf
 
 
 class Forecaster(pl.LightningModule, ABC):
@@ -25,7 +25,7 @@ class Forecaster(pl.LightningModule, ABC):
         self.null_value = None
         self.loss = loss
         if linear_window:
-            self.linear_model = tt.linear_model.LinearModel(linear_window)
+            self.linear_model = stf.linear_model.LinearModel(linear_window)
         else:
             self.linear_model = lambda x: 0.0
 
@@ -128,10 +128,10 @@ class Forecaster(pl.LightningModule, ABC):
         pred = self._inv_scaler(pred.detach().cpu().numpy())
         true = self._inv_scaler(true.detach().cpu().numpy())
         return {
-            "mape": tt.eval_stats.mape(true, pred),
-            "mae": tt.eval_stats.mae(true, pred),
-            "mse": tt.eval_stats.mse(true, pred),
-            "rse": tt.eval_stats.rrse(true, pred),
+            "mape": stf.eval_stats.mape(true, pred),
+            "mae": stf.eval_stats.mae(true, pred),
+            "mse": stf.eval_stats.mse(true, pred),
+            "rse": stf.eval_stats.rrse(true, pred),
         }
 
     def step(self, batch: Tuple[torch.Tensor], train: bool = False):

@@ -5,12 +5,12 @@ from torch import nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
-import transformer_timeseries as tt
+import spacetimeformer as stf
 
 from .LSTNet import LSTNet
 
 
-class LSTNet_Forecaster(tt.Forecaster):
+class LSTNet_Forecaster(stf.Forecaster):
     def __init__(
         self,
         context_points: int,

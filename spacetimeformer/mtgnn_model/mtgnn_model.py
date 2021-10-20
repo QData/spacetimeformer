@@ -1,12 +1,11 @@
 from typing import List
-import warnings
 
 import torch
 from torch import nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
-import transformer_timeseries as tt
+import spacetimeformer as stf
 
 try:
     from torch_geometric_temporal.nn import MTGNN
@@ -23,7 +22,7 @@ except ImportError:
             )
 
 
-class MTGNN_Forecaster(tt.Forecaster):
+class MTGNN_Forecaster(stf.Forecaster):
     def __init__(
         self,
         d_y: int,
@@ -61,7 +60,7 @@ class MTGNN_Forecaster(tt.Forecaster):
         subgraph_size = min(subgraph_size, d_y)
         self.learning_rate = learning_rate
 
-        self.time2vec = tt.Time2Vec(input_dim=d_x, embed_dim=time_emb_dim)
+        self.time2vec = stf.Time2Vec(input_dim=d_x, embed_dim=time_emb_dim)
 
         self.model = MTGNN(
             gcn_true=use_gcn_layer,

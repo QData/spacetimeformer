@@ -1,8 +1,8 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="transformer_timeseries",
-    version="0.0.1",
+    name="spacetimeformer",
+    version="0.1.0",
     setup_requires=["pytest-runner"],
     tests_require=["pytest"],
     description="QData Research Library for the Spacetimeformer project",
