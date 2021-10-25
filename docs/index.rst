@@ -13,7 +13,7 @@ spacetimeformer Documentation
    :maxdepth: 6
    :caption: Notebook tutorials
 
-   Tutorial 1: Simple use <2demo/Demo.ipynb>
+   Tutorial (TBA): Simple use <2demo/Demo.ipynb>
 
 
 .. toctree::
@@ -30,4 +30,4 @@ spacetimeformer Documentation
    :caption: Developer Guide
 
    Contributing <1start/support.md>  
-   apidoc/transformer_timeseries
+   apidoc/spacetimeformer
