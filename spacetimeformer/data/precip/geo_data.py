@@ -12,7 +12,7 @@ from sklearn.preprocessing import StandardScaler
 class GeoDset:
     def __init__(
         self,
-        dset_dir: str = "/p/qdatatext/jcg6dn/usgs_precipitation/",
+        dset_dir: str = "./data/usgs_precipitation/",
         var="precip",
         train_val_test: Tuple[float] = (0.6, 0.3, 0.1),
     ):
@@ -55,7 +55,7 @@ class GeoDset:
     @classmethod
     def add_cli(self, parser):
         parser.add_argument(
-            "--dset_dir", type=str, default="/p/qdatatext/jcg6dn/usgs_precipitation/"
+            "--dset_dir", type=str, default="./data/usgs_precipitation/"
         )
 
 
