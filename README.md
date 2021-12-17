@@ -12,7 +12,7 @@ Transformers are a high-performance approach to sequence-to-sequence timeseries 
 This repository was written and tested for **python 3.8** and **pytorch 1.9.0**.
 
 ```bash
-git clone https://github.com/UVA-MachineLearningBioinformatics/spacetimeformer.git
+git clone https://github.com/QData/spacetimeformer.git
 cd spacetimeformer
 conda create -n spacetimeformer python==3.8
 source activate spacetimeformer
