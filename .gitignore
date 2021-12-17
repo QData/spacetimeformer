@@ -1,138 +1,49 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
+# cache for test output
 .cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
 
-# Translations
-*.mo
-*.pot
+# compiled python files
+__pycache__/
 
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
+# run logs
+outputs/
 
-# Flask stuff:
-instance/
-.webassets-cache
+# IDE files
+.c9*
+.idea/
 
-# Scrapy stuff:
-.scrapy
+# Jupyter notebook files
+.ipynb_checkpoints/
 
 # Sphinx documentation
 docs/_build/
 
-# PyBuilder
-.pybuilder/
-target/
+# Packaging
+*.egg-info/
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# Files from IDES
+.*.py
 
-# IPython
-profile_default/
-ipython_config.py
+# TF Hub modules
+tensorflow-hub
 
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
+# for Macs
+.DS_Store
 
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
+# build outputs for PyPI
+build/
+dist/
 
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow
-__pypackages__/
+# Weights & Biases outputs
+wandb/
 
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
+# Tensorboard logs
+runs/
 
-# SageMath parsed files
-*.sage.py
+# checkpoints
+checkpoints/
 
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+# vim
+*.swp
 
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
+.vscode
+*.csv
