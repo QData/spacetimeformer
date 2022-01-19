@@ -54,7 +54,13 @@ Dataset Names:
 </p>
 
 ### Logging with Weights and Biases
-We used [wandb](https://wandb.ai/home) to track all of results during development, and you can do the same by hardcoding the correct organization/username and project name in the `train.py` file. Comments indicate the location
+We used [wandb](https://wandb.ai/home) to track all of results during development, and you can do the same by providing your username and project as environment variables:
+```bash
+export STF_WANDB_ACCT="your_username"
+export STF_WANDB_PROJ="your_project_title"
+# optionally: change wandb logging directory (defaults to ./data/STF_LOG_DIR)
+export STF_LOG_DIR="/somewhere/with/more/disk/space"
+```
 near the top of the `main` method. wandb logging can then be enabled with the `--wandb` flag.
 
 There are two automated figures that can be saved to wandb between epochs. These include the attention diagrams (e.g., Figure 4 of our paper) and prediction plots (e.g., Figure 6 of our paper). Enable attention diagrams with `--attn_plot` and prediction curves with `--plot`.
@@ -76,7 +82,7 @@ python train.py spacetimeformer metr-la --start_token_len 3 --batch_size 32 \
 --run_name spatiotemporal_metr-la --base_lr 1e-3 --l2_coeff 1e-2 \
 ```
 
-Temporal Attention Ablation with Negative Log Likelihood Loss on NY-TX Weather ("asos") with WandB Loggin and Figures
+Temporal Attention Ablation with Negative Log Likelihood Loss on NY-TX Weather ("asos") with WandB Logging and Figures
 ```bash
 python train.py spacetimeformer asos --context_points 160 --target_points 40 \ 
 --start_token_len 8 --grad_clip_norm 1 --gpus 0 --batch_size 128 \ 
