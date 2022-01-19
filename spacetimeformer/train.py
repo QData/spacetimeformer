@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 import random
 import sys
 import warnings
+import os
 
 import pytorch_lightning as pl
 import torch
@@ -29,7 +30,9 @@ def create_parser():
     dset = sys.argv[2]
 
     # Throw error now before we get confusing parser issues
-    assert model in _MODELS, f"Unrecognized model (`{model}`). Options include: {_MODELS}"
+    assert (
+        model in _MODELS
+    ), f"Unrecognized model (`{model}`). Options include: {_MODELS}"
     assert dset in _DSETS, f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
 
     parser = ArgumentParser()
@@ -342,21 +345,27 @@ def create_callbacks(config):
 
 def main(args):
     if args.wandb:
-        """
-        Set Up Weights and Biases online logging
-        by entering your org and project names
-        in the variables below.
-        """
-        project = None  # wandb project name
-        entity = None  # wandb organization
+        import wandb
+
+        project = os.getenv("STF_WANDB_PROJ")
+        entity = os.getenv("STF_WANDB_ACCT")
+        log_dir = os.getenv("STF_LOG_DIR")
+        if log_dir is None:
+            log_dir = "./data/STF_LOG_DIR"
+            print(
+                "Using default wandb log dir path of ./data/STF_LOG_DIR. This can be adjusted with the environment variable `STF_LOG_DIR`"
+            )
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
         assert (
             project is not None and entity is not None
-        ), "Please edit train.py with your wandb account information."
+        ), "Please set environment variables `STF_WANDB_ACCT` and `STF_WANDB_PROJ` with \n\
+            your wandb user/organization name and project title, respectively."
         experiment = wandb.init(
             project=project,
             entity=entity,
             config=args,
-            dir="./data/stf_LOG_DIR",
+            dir=log_dir,
             reinit=True,
         )
         config = wandb.config
@@ -434,9 +443,6 @@ if __name__ == "__main__":
     # CLI
     parser = create_parser()
     args = parser.parse_args()
-
-    if args.wandb:
-        import wandb
 
     for trial in range(args.trials):
         main(args)
