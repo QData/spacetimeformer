@@ -50,53 +50,21 @@ class ReduceLROnPlateauScheduler(LearningRateScheduler):
         self.lr = lr
         self.patience = patience
         self.factor = factor
-        self.val_loss = 100.0
+        self.val_loss = float("inf")
         self.count = 0
         self._old_val_loss = None
 
     def step(self, val_loss: float):
-        """
-        I think this optimizer is meant to be used like:
-
-        for train_step:
-            loss = compute_loss()
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            scheduler.step()
-
-        for val_step:
-            val_loss = compute_loss()
-            scheduler.step(val_loss)
-
-
-        But pytorch lightning will call it every training and val
-        step with val_loss=val_loss. Usually that val_loss value
-        is from the previous epoch. So we add this ugly trick of
-        comparing against the last value we recieved to try and guess
-        when a new epoch has started.
-        """
-        if self._old_val_loss is None:
-            self._old_val_loss = val_loss
-
-        if val_loss == self._old_val_loss:
-            # likely that we are in the same epoch.
-            # pretend that val_loss wasn't provided
-            val_loss = None
+        if self.val_loss < val_loss:
+            self.count += 1
+            self.val_loss = val_loss
         else:
-            self._old_val_loss = val_loss
+            self.count = 0
+            self.val_loss = val_loss
 
-        if val_loss is not None:
-            if self.val_loss < val_loss:
-                self.count += 1
-                self.val_loss = val_loss
-            else:
-                self.count = 0
-                self.val_loss = val_loss
-
-            if self.patience == self.count:
-                self.count = 0
-                self.lr *= self.factor
-                self.set_lr(self.optimizer, self.lr)
+        if self.patience == self.count:
+            self.count = 0
+            self.lr *= self.factor
+            self.set_lr(self.optimizer, self.lr)
 
         return self.lr

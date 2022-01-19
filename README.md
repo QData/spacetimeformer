@@ -1,12 +1,10 @@
 # Spacetimeformer Multivariate Forecasting
 
-This repository contains the code for the paper, "**Long-Range Transformers for Dynamic Spatiotemporal Forecasting**", Grigsby, Wang and Qi, 2021. ([arxiv](https://arxiv.org/abs/2109.12218))
+This repository contains the code for the paper, "**Long-Range Transformers for Dynamic Spatiotemporal Forecasting**", Grigsby, Wang and Qi, 2021. ([arXiv](https://arxiv.org/abs/2109.12218))
 
 ![spatiotemporal_embedding](readme_media/st-graph.png)
 
 Transformers are a high-performance approach to sequence-to-sequence timeseries forecasting. However, stacking multiple sequences into each token only allows the model to learn *temporal* relationships across time. This can ignore important *spatial* relationships between variables. Our model (nickamed "Spacetimeformer") flattens multivariate timeseries into extended sequences where each token represents the value of one variable at a given timestep. Long-Range Transformers can then learn relationships over both time and space. For much more information, please refer to our paper.
-
-### We will be adding additional instructions, example commands and dataset links in the coming days.
 
 ## Installation 
 This repository was written and tested for **python 3.8** and **pytorch 1.9.0**.
@@ -54,8 +52,14 @@ Dataset Names:
 </p>
 
 ### Logging with Weights and Biases
-We used [wandb](https://wandb.ai/home) to track all of results during development, and you can do the same by hardcoding the correct organization/username and project name in the `train.py` file. Comments indicate the location
-near the top of the `main` method. wandb logging can then be enabled with the `--wandb` flag.
+We used [wandb](https://wandb.ai/home) to track all of results during development, and you can do the same by providing your username and project as environment variables:
+```bash
+export STF_WANDB_ACCT="your_username"
+export STF_WANDB_PROJ="your_project_title"
+# optionally: change wandb logging directory (defaults to ./data/STF_LOG_DIR)
+export STF_LOG_DIR="/somewhere/with/more/disk/space"
+```
+wandb logging can then be enabled with the `--wandb` flag.
 
 There are two automated figures that can be saved to wandb between epochs. These include the attention diagrams (e.g., Figure 4 of our paper) and prediction plots (e.g., Figure 6 of our paper). Enable attention diagrams with `--attn_plot` and prediction curves with `--plot`.
 
@@ -76,7 +80,7 @@ python train.py spacetimeformer metr-la --start_token_len 3 --batch_size 32 \
 --run_name spatiotemporal_metr-la --base_lr 1e-3 --l2_coeff 1e-2 \
 ```
 
-Temporal Attention Ablation with Negative Log Likelihood Loss on NY-TX Weather ("asos") with WandB Loggin and Figures
+Temporal Attention Ablation with Negative Log Likelihood Loss on NY-TX Weather ("asos") with WandB Logging and Figures
 ```bash
 python train.py spacetimeformer asos --context_points 160 --target_points 40 \ 
 --start_token_len 8 --grad_clip_norm 1 --gpus 0 --batch_size 128 \ 
@@ -109,6 +113,16 @@ If you use this model in academic work please feel free to cite our paper
 ```
 
 ![st-embed-fig](readme_media/embed.png)
+
+## Roadmap, V2 Plans
+
+We are working on a second version of the paper, where we plan to focus on adjustments that make it easier to work with real-world datasets:
+- [ ] Missing data in the encoder sequence (instead of only ignoring the loss values in the decoder)
+- [ ] Multivariate datasets with variables sampled at different time intervals
+- [ ] Additional encoder sequence features beyond the target variables
+
+If you have other suggestions, please feel free to file an issue or email the authors!
+
 
 
 

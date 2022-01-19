@@ -213,14 +213,14 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
             init_lr=self.init_lr,
             peak_lr=self.base_lr,
             warmup_steps=self.warmup_steps,
-            patience=3,
+            patience=2,
             factor=self.decay_factor,
         )
         return {
             "optimizer": optimizer,
             "lr_scheduler": {
                 "scheduler": scheduler,
-                "interval": "step",
+                "interval": "epoch",
                 "frequency": 1,
                 "monitor": "val/forecast_loss",
                 "reduce_on_plateau": True,
