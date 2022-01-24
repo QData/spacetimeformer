@@ -18,6 +18,7 @@ class SpacetimeformerEmbedding(nn.Module):
         method="spatio-temporal",
         downsample_convs=1,
         start_token_len=0,
+        null_value=None,
     ):
         super().__init__()
 
@@ -49,6 +50,7 @@ class SpacetimeformerEmbedding(nn.Module):
         self._benchmark_embed_enc = None
         self._benchmark_embed_dec = None
         self.d_model = d_model
+        self.null_value = null_value
 
     def __call__(self, y, x, is_encoder=True):
         if self.method == "spatio-temporal":
@@ -137,12 +139,18 @@ class SpacetimeformerEmbedding(nn.Module):
         val_time_emb = self.y_emb(val_time_inp)
 
         # "given" embedding
-        given = torch.ones((bs, length, d_y)).long().to(x.device)
-        if not is_encoder and self.GIVEN:
-            given[:, self.start_token_len :, :] = 0
-        given = torch.cat(given.chunk(d_y, dim=-1), dim=1).squeeze(-1)
-        given_emb = self.given_emb(given)
-        val_time_emb += given_emb
+        if self.GIVEN:
+            given = torch.ones((bs, length, d_y)).long().to(x.device) # start as T
+            if not is_encoder:
+                # mask missing values that need prediction...
+                given[:, self.start_token_len :, :] = 0
+            given = torch.cat(given.chunk(d_y, dim=-1), dim=1).squeeze(-1)
+            if self.null_value is not None:
+                # mask null values
+                null_mask = (y != self.null_value).squeeze(-1)
+                given *= null_mask
+            given_emb = self.given_emb(given)
+            val_time_emb += given_emb
 
         if is_encoder:
             for conv in self.downsize_convs:

@@ -65,6 +65,7 @@ def create_parser():
 
     stf.callbacks.TimeMaskedLossCallback.add_cli(parser)
 
+    parser.add_argument("--null_value", type=float, default=None)
     parser.add_argument("--early_stopping", action="store_true")
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--plot", action="store_true")
@@ -207,6 +208,7 @@ def create_model(config):
             linear_window=config.linear_window,
             class_loss_imp=config.class_loss_imp,
             time_emb_dim=config.time_emb_dim,
+            null_value=config.null_value,
         )
     elif config.model == "linear":
         forecaster = stf.linear_model.Linear_Forecaster(
@@ -374,13 +376,14 @@ def main(args):
     else:
         config = args
 
-    # Model
-    forecaster = create_model(config)
-
     # Dset
     data_module, inv_scaler, null_val = create_dset(config)
 
+    # Model
+    config.null_value = null_val
+    forecaster = create_model(config)
     forecaster.set_inv_scaler(inv_scaler)
+    forecaster.set_null_value(null_val)
 
     # Callbacks
     callbacks = create_callbacks(config)
@@ -402,10 +405,6 @@ def main(args):
                 raw_data_dir=wandb.run.dir,
             )
         )
-
-    # Deal with missing entries in some datasets
-    if null_val is not None:
-        forecaster.set_null_value(null_val)
 
     # Logging
     if config.wandb:
