@@ -54,7 +54,7 @@ class Spacetimeformer(nn.Module):
         initial_downsample_convs: int = 0,
         intermediate_downsample_convs: int = 0,
         device=torch.device("cuda:0"),
-        null_value : float = None,
+        null_value: float = None,
         verbose: bool = True,
     ):
         super().__init__()

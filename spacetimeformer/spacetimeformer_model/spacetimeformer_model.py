@@ -48,7 +48,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         linear_window: int = 0,
         class_loss_imp: float = 0.1,
         time_emb_dim: int = 6,
-        null_value : float = None,
+        null_value: float = None,
         verbose=True,
     ):
         super().__init__(l2_coeff=l2_coeff, loss=loss, linear_window=linear_window)

@@ -311,7 +311,8 @@ def create_callbacks(config):
     saving = pl.callbacks.ModelCheckpoint(
         dirpath=f"./data/stf_model_checkpoints/{config.run_name}_{''.join([str(random.randint(0,9)) for _ in range(9)])}",
         monitor="val/mse",
-        filename=f"{config.run_name}" + "{epoch:02d}-{val/loss:.2f}",
+        mode="min",
+        filename=f"{config.run_name}" + "{epoch:02d}-{val/mse:.2f}",
         save_top_k=1,
     )
     callbacks = [saving]
