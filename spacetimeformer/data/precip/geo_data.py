@@ -6,7 +6,6 @@ import random
 import numpy as np
 import glob
 from torch.utils.data import Dataset as TorchDataset
-from sklearn.preprocessing import StandardScaler
 
 
 class GeoDset:
