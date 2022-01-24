@@ -3,7 +3,6 @@ import os
 
 import torch
 from torch.utils.data import TensorDataset
-from sklearn.preprocessing import StandardScaler
 
 
 class METR_LA_Data:

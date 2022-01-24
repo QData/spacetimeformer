@@ -93,18 +93,19 @@ class CSVTimeSeries:
 
     def apply_scaling(self, df):
         scaled = df.copy(deep=True)
-        scaled[self.target_cols] = self._scaler.transform(df[self.target_cols].values)
+        #scaled[self.target_cols] = self._scaler.transform(df[self.target_cols].values)
+        scaled[self.target_cols] = (df[self.target_cols].values - self._scaler.mean_) / self._scaler.scale_
         return scaled
 
     def reverse_scaling_df(self, df):
         scaled = df.copy(deep=True)
-        scaled[self.target_cols] = self._scaler.inverse_transform(
-            df[self.target_cols].values
-        )
+        #scaled[self.target_cols] = self._scaler.inverse_transform(df[self.target_cols].values)
+        scaled[self.target_cols] = (df[self.target_cols] * self._scaler.scale_) + self._scaler.mean_
         return scaled
 
     def reverse_scaling(self, array):
-        return self._scaler.inverse_transform(array)
+        return (array * self._scaler.scale_) + self._scaler.mean_
+        #return self._scaler.inverse_transform(array)
 
     @property
     def train_data(self):
