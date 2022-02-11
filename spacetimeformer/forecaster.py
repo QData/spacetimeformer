@@ -173,11 +173,11 @@ class Forecaster(pl.LightningModule, ABC):
 
     def validation_step_end(self, outs):
         self._log_stats("val", outs)
-        return {"loss": outs["loss"]}
+        return {"loss": outs["loss"].mean()}
 
     def test_step_end(self, outs):
         self._log_stats("test", outs)
-        return {"loss": outs["loss"]}
+        return {"loss": outs["loss"].mean()}
 
     def predict_step(self, batch, batch_idx):
         return self(*batch, **self.eval_step_forward_kwargs)
