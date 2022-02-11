@@ -48,6 +48,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         linear_window: int = 0,
         class_loss_imp: float = 0.1,
         time_emb_dim: int = 6,
+        null_value: float = None,
         verbose=True,
     ):
         super().__init__(l2_coeff=l2_coeff, loss=loss, linear_window=linear_window)
@@ -81,6 +82,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
             performer_redraw_interval=performer_redraw_interval,
             time_emb_dim=time_emb_dim,
             verbose=True,
+            null_value=null_value,
         )
         self.start_token_len = start_token_len
         self.init_lr = init_lr
@@ -89,6 +91,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         self.decay_factor = decay_factor
         self.embed_method = embed_method
         self.class_loss_imp = class_loss_imp
+        self.set_null_value(null_value)
 
         qprint = lambda _msg_: print(_msg_) if verbose else None
         qprint(f" *** Spacetimeformer Summary: *** ")
@@ -133,6 +136,16 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         stats["class_loss"] = class_loss
         stats["loss"] = forecast_loss + self.class_loss_imp * class_loss
         stats["acc"] = acc
+
+        """
+        # temporary traffic stats:
+        preds = self._inv_scaler(output.detach().cpu().numpy())
+        true = self._inv_scaler(y_t.detach().cpu().numpy())
+        mask = mask.detach().cpu().numpy()
+        time_based_mae = abs((mask * preds) - (mask * true)).mean((0, -1))
+        for time_idx in range(len(time_based_mae)):
+            stats[f"mae_traffic_time_{time_idx}"] = time_based_mae[time_idx]
+        """
         return stats
 
     def classification_loss(
@@ -206,7 +219,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
-            self.parameters(), lr=self.base_lr, weight_decay=self.l2_coeff
+            self.parameters(), lr=self.base_lr, weight_decay=self.l2_coeff,
         )
         scheduler = stf.lr_scheduler.WarmupReduceLROnPlateau(
             optimizer,

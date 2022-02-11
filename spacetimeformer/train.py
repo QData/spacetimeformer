@@ -65,6 +65,7 @@ def create_parser():
 
     stf.callbacks.TimeMaskedLossCallback.add_cli(parser)
 
+    parser.add_argument("--null_value", type=float, default=None)
     parser.add_argument("--early_stopping", action="store_true")
     parser.add_argument("--wandb", action="store_true")
     parser.add_argument("--plot", action="store_true")
@@ -207,6 +208,7 @@ def create_model(config):
             linear_window=config.linear_window,
             class_loss_imp=config.class_loss_imp,
             time_emb_dim=config.time_emb_dim,
+            null_value=config.null_value,
         )
     elif config.model == "linear":
         forecaster = stf.linear_model.Linear_Forecaster(
@@ -309,7 +311,8 @@ def create_callbacks(config):
     saving = pl.callbacks.ModelCheckpoint(
         dirpath=f"./data/stf_model_checkpoints/{config.run_name}_{''.join([str(random.randint(0,9)) for _ in range(9)])}",
         monitor="val/mse",
-        filename=f"{config.run_name}" + "{epoch:02d}-{val/loss:.2f}",
+        mode="min",
+        filename=f"{config.run_name}" + "{epoch:02d}-{val/mse:.2f}",
         save_top_k=1,
     )
     callbacks = [saving]
@@ -371,59 +374,52 @@ def main(args):
         config = wandb.config
         wandb.run.name = args.run_name
         wandb.run.save()
-    else:
-        config = args
-
-    # Model
-    forecaster = create_model(config)
-
-    # Dset
-    data_module, inv_scaler, null_val = create_dset(config)
-
-    forecaster.set_inv_scaler(inv_scaler)
-
-    # Callbacks
-    callbacks = create_callbacks(config)
-    test_samples = next(iter(data_module.test_dataloader()))
-
-    if config.wandb and config.plot:
-        callbacks.append(
-            stf.plot.PredictionPlotterCallback(
-                test_samples, total_samples=min(8, config.batch_size)
-            )
-        )
-    if config.wandb and config.model == "spacetimeformer" and config.attn_plot:
-
-        callbacks.append(
-            stf.plot.AttentionMatrixCallback(
-                test_samples,
-                layer=0,
-                total_samples=min(16, config.batch_size),
-                raw_data_dir=wandb.run.dir,
-            )
-        )
-
-    # Deal with missing entries in some datasets
-    if null_val is not None:
-        forecaster.set_null_value(null_val)
-
-    # Logging
-    if config.wandb:
         logger = pl.loggers.WandbLogger(
             experiment=experiment, save_dir="./data/stf_LOG_DIR"
         )
         logger.log_hyperparams(config)
 
+
+    # Dset
+    data_module, inv_scaler, null_val = create_dset(args)
+
+    # Model
+    args.null_value = null_val
+    forecaster = create_model(args)
+    forecaster.set_inv_scaler(inv_scaler)
+    forecaster.set_null_value(null_val)
+
+    # Callbacks
+    callbacks = create_callbacks(args)
+    test_samples = next(iter(data_module.test_dataloader()))
+
+    if args.wandb and args.plot:
+        callbacks.append(
+            stf.plot.PredictionPlotterCallback(
+                test_samples, total_samples=min(8, args.batch_size)
+            )
+        )
+    if args.wandb and args.model == "spacetimeformer" and args.attn_plot:
+
+        callbacks.append(
+            stf.plot.AttentionMatrixCallback(
+                test_samples,
+                layer=0,
+                total_samples=min(16, args.batch_size),
+                raw_data_dir=wandb.run.dir,
+            )
+        )
+
     trainer = pl.Trainer(
-        gpus=config.gpus,
+        gpus=args.gpus,
         callbacks=callbacks,
         logger=logger if args.wandb else None,
         accelerator="dp",
         log_gpu_memory=True,
-        gradient_clip_val=config.grad_clip_norm,
+        gradient_clip_val=args.grad_clip_norm,
         gradient_clip_algorithm="norm",
-        overfit_batches=20 if config.debug else 0,
-        # track_grad_norm=2,
+        overfit_batches=20 if args.debug else 0,
+        #track_grad_norm=2,
         accumulate_grad_batches=args.accumulate,
         sync_batchnorm=True,
         val_check_interval=0.25 if args.dset == "asos" else 1.0,

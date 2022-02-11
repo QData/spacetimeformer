@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from torch.distributions import Normal
+import numpy as np
 
 import spacetimeformer as stf
 
@@ -161,7 +162,10 @@ class Forecaster(pl.LightningModule, ABC):
 
     def _log_stats(self, section, outs):
         for key in outs.keys():
-            self.log(f"{section}/{key}", outs[key], sync_dist=True)
+            stat = outs[key]
+            if isinstance(stat, np.ndarray) or isinstance(stat, torch.Tensor):
+                stat = stat.mean()
+            self.log(f"{section}/{key}", stat, sync_dist=True)
 
     def training_step_end(self, outs):
         self._log_stats("train", outs)
@@ -169,11 +173,11 @@ class Forecaster(pl.LightningModule, ABC):
 
     def validation_step_end(self, outs):
         self._log_stats("val", outs)
-        return {"loss": outs["loss"]}
+        return {"loss": outs["loss"].mean()}
 
     def test_step_end(self, outs):
         self._log_stats("test", outs)
-        return {"loss": outs["loss"]}
+        return {"loss": outs["loss"].mean()}
 
     def predict_step(self, batch, batch_idx):
         return self(*batch, **self.eval_step_forward_kwargs)
