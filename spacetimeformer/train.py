@@ -425,7 +425,6 @@ def main(args):
         # track_grad_norm=2,
         accumulate_grad_batches=args.accumulate,
         sync_batchnorm=True,
-        max_epochs=1,
         val_check_interval=0.25 if args.dset == "asos" else 1.0,
     )
 
