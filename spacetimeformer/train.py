@@ -224,6 +224,7 @@ def create_model(config):
 
 def create_dset(config):
     INV_SCALER = lambda x: x
+    SCALER = lambda x: x
     NULL_VAL = None
 
     if config.dset == "metr-la" or config.dset == "pems-bay":
@@ -239,6 +240,7 @@ def create_dset(config):
             workers=config.workers,
         )
         INV_SCALER = data.inverse_scale
+        SCALER = data.scale
         NULL_VAL = 0.0
 
     elif config.dset == "precip":
@@ -302,9 +304,10 @@ def create_dset(config):
             workers=config.workers,
         )
         INV_SCALER = dset.reverse_scaling
+        SCALER = dset.apply_scaling
         NULL_VAL = None
 
-    return DATA_MODULE, INV_SCALER, NULL_VAL
+    return DATA_MODULE, INV_SCALER, SCALER, NULL_VAL
 
 
 def create_callbacks(config):
@@ -379,14 +382,14 @@ def main(args):
         )
         logger.log_hyperparams(config)
 
-
     # Dset
-    data_module, inv_scaler, null_val = create_dset(args)
+    data_module, inv_scaler, scaler, null_val = create_dset(args)
 
     # Model
     args.null_value = null_val
     forecaster = create_model(args)
     forecaster.set_inv_scaler(inv_scaler)
+    forecaster.set_scaler(scaler)
     forecaster.set_null_value(null_val)
 
     # Callbacks
@@ -419,9 +422,10 @@ def main(args):
         gradient_clip_val=args.grad_clip_norm,
         gradient_clip_algorithm="norm",
         overfit_batches=20 if args.debug else 0,
-        #track_grad_norm=2,
+        # track_grad_norm=2,
         accumulate_grad_batches=args.accumulate,
         sync_batchnorm=True,
+        max_epochs=1,
         val_check_interval=0.25 if args.dset == "asos" else 1.0,
     )
 

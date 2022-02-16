@@ -78,9 +78,9 @@ class CSVTimeSeries:
 
         self._scaler = self._scaler.fit(self._train_data[target_cols].values)
 
-        self._train_data = self.apply_scaling(df[train_mask])
-        self._val_data = self.apply_scaling(df[val_mask])
-        self._test_data = self.apply_scaling(df[test_mask])
+        self._train_data = self.apply_scaling_df(df[train_mask])
+        self._val_data = self.apply_scaling_df(df[val_mask])
+        self._test_data = self.apply_scaling_df(df[test_mask])
 
     def get_slice(self, split, start, stop, skip):
         assert split in ["train", "val", "test"]
@@ -91,13 +91,16 @@ class CSVTimeSeries:
         else:
             return self.test_data.iloc[start:stop:skip]
 
-    def apply_scaling(self, df):
+    def apply_scaling_df(self, df):
         scaled = df.copy(deep=True)
         # scaled[self.target_cols] = self._scaler.transform(df[self.target_cols].values)
         scaled[self.target_cols] = (
             df[self.target_cols].values - self._scaler.mean_
         ) / self._scaler.scale_
         return scaled
+
+    def apply_scaling(self, array):
+        return (array - self._scaler.mean_) / self._scaler.scale_
 
     def reverse_scaling_df(self, df):
         scaled = df.copy(deep=True)
