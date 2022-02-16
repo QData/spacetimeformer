@@ -95,6 +95,28 @@ class Forecaster(pl.LightningModule, ABC):
         )
         return loss, outputs, mask
 
+    def predict(
+        self,
+        x_c: torch.Tensor,
+        y_c: torch.Tensor,
+        x_t: torch.Tensor,
+        sample_preds: bool = False,
+    ) -> np.ndarray:
+        y_t = torch.zeros((x_t.shape[0], x_t.shape[1], y_c.shape[2])).to(x_t.device)
+        with torch.no_grad():
+            normalized_preds, *_ = self.forward(
+                x_c, y_c, x_t, y_t, **self.eval_step_forward_kwargs
+            )
+
+        if isinstance(normalized_preds, Normal):
+            if sample_preds:
+                normalized_preds = normalized_preds.sample()
+            else:
+                normalized_preds = normalized_preds.mean
+
+        preds = self._inv_scaler(normalized_preds.cpu().numpy())
+        return preds
+
     @abstractmethod
     def forward_model_pass(
         self,
