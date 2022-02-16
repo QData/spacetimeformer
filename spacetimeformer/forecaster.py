@@ -20,6 +20,7 @@ class Forecaster(pl.LightningModule, ABC):
     ):
         super().__init__()
         self._inv_scaler = lambda x: x
+        self._scaler = lambda x: x
         self.l2_coeff = l2_coeff
         self.learning_rate = learning_rate
         self.time_masked_idx = None
@@ -35,6 +36,9 @@ class Forecaster(pl.LightningModule, ABC):
 
     def set_inv_scaler(self, scaler) -> None:
         self._inv_scaler = scaler
+
+    def set_scaler(self, scaler) -> None:
+        self._scaler = scaler
 
     @property
     @abstractmethod
@@ -101,20 +105,39 @@ class Forecaster(pl.LightningModule, ABC):
         y_c: torch.Tensor,
         x_t: torch.Tensor,
         sample_preds: bool = False,
-    ) -> np.ndarray:
-        y_t = torch.zeros((x_t.shape[0], x_t.shape[1], y_c.shape[2])).to(x_t.device)
+    ) -> torch.Tensor:
+        og_device = y_c.device
+        # move to model device
+        x_c = x_c.to(self.device).float()
+        x_t = x_t.to(self.device).float()
+        # move y_c to cpu if it isn't already there, scale, and then move back to the model device
+        y_c = torch.from_numpy(self._scaler(y_c.cpu().numpy())).to(self.device).float()
+        # create dummy y_t of zeros
+        y_t = (
+            torch.zeros((x_t.shape[0], x_t.shape[1], y_c.shape[2]))
+            .to(self.device)
+            .float()
+        )
+
         with torch.no_grad():
+            # gradient-free prediction
             normalized_preds, *_ = self.forward(
                 x_c, y_c, x_t, y_t, **self.eval_step_forward_kwargs
             )
 
+        # handle case that the output is a distribution (spacetimeformer)
         if isinstance(normalized_preds, Normal):
             if sample_preds:
                 normalized_preds = normalized_preds.sample()
             else:
                 normalized_preds = normalized_preds.mean
 
-        preds = self._inv_scaler(normalized_preds.cpu().numpy())
+        # preds --> cpu --> inverse scale to original units --> original device of y_c
+        preds = (
+            torch.from_numpy(self._inv_scaler(normalized_preds.cpu().numpy()))
+            .to(og_device)
+            .float()
+        )
         return preds
 
     @abstractmethod
