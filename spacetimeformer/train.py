@@ -295,7 +295,18 @@ def create_dset(config):
         elif config.dset == "crypto":
             if data_path == "auto":
                 data_path = "./data/crypto_converted.csv"
-            target_cols = ["BTC", "ETH", "LTC"]
+            target_cols = [
+                'ETHUSDT_open',
+                'ETHUSDT_high',
+                'ETHUSDT_low',
+                'ETHUSDT_close',
+                'Volume BTC',
+                'Volume USDT',
+                'ETH_tradecount',
+                'BTCUSDT_open',
+       'BTCUSDT_high', 'BTCUSDT_low', 'BTCUSDT_close', 'BTC_tradecount',
+       'LTCUSDT_open', 'LTCUSDT_high', 'LTCUSDT_low', 'LTCUSDT_close',
+       'Volume LTC', 'LTC_tradecount']
         
         dset = stf.data.CSVTimeSeries(
             data_path=data_path,
