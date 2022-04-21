@@ -112,8 +112,8 @@ def create_model(config):
         x_dim = 6
         y_dim = 20
     elif config.dset == "crypto":
-        x_dim = 10
-        y_dim = 1
+        x_dim = 17
+        y_dim = 17
 
     assert x_dim is not None
     assert y_dim is not None
@@ -294,7 +294,7 @@ def create_dset(config):
             ]
         elif config.dset == "crypto":
             if data_path == "auto":
-                data_path = "./data/crypto_converted.csv"
+                data_path = "./data/Crypto/crypto_converted.csv"
             target_cols = [
                 'ETHUSDT_open',
                 'ETHUSDT_high',
