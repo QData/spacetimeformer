@@ -112,7 +112,7 @@ def create_model(config):
         x_dim = 6
         y_dim = 20
     elif config.dset == "crypto":
-        x_dim = 17
+        x_dim = 6
         y_dim = 17
 
     assert x_dim is not None
@@ -279,6 +279,7 @@ def create_dset(config):
                 else:
                     raise ValueError(f"Unrecognized toy dataset {config.dset}")
             target_cols = [f"D{i}" for i in range(1, 21)]
+            
         elif config.dset == "exchange":
             if data_path == "auto":
                 data_path = "./data/exchange_rate_converted.csv"
