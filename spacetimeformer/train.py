@@ -22,6 +22,7 @@ _DSETS = [
     "toy1",
     "toy2",
     "solar_energy",
+    "crypto",
 ]
 
 
@@ -110,6 +111,9 @@ def create_model(config):
     elif config.dset == "toy2":
         x_dim = 6
         y_dim = 20
+    elif config.dset == "crypto":
+        x_dim = 10
+        y_dim = 1
 
     assert x_dim is not None
     assert y_dim is not None
@@ -288,6 +292,11 @@ def create_dset(config):
                 "New Zealand",
                 "Singapore",
             ]
+        elif config.dset == "crypto":
+            if data_path == "auto":
+                data_path = "./data/crypto_converted.csv"
+            target_cols = ["BTC", "ETH", "LTC"]
+        
         dset = stf.data.CSVTimeSeries(
             data_path=data_path,
             target_cols=target_cols,
