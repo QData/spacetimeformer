@@ -113,7 +113,7 @@ def create_model(config):
         y_dim = 20
     elif config.dset == "crypto":
         x_dim = 6
-        y_dim = 17
+        y_dim = 12
 
     assert x_dim is not None
     assert y_dim is not None
@@ -307,13 +307,8 @@ def create_dset(config):
                  'BTC_open',
                  'BTC_high',
                   'BTC_low',
-                  'BTC_close', 'BTC_tradecount',
-                  'LTC_open',
-                  'LTC_high',
-                 'LTC_low',
-                 'LTC_close',
-                 'Volume LTC',
-                 'LTC_tradecount'
+                  'BTC_close',
+                  'BTC_tradecount',
                  ]
         
         dset = stf.data.CSVTimeSeries(
