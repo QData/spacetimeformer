@@ -9,7 +9,8 @@ python-dateutil>=2.8.0
 performer-pytorch
 tqdm>=4.36.1
 nystrom-attention
-pytorch-lightning
+pytorch-lightning==1.5
+torchtext==0.6.0
 netCDF4
 scikit-learn
 omegaconf

@@ -22,6 +22,7 @@ _DSETS = [
     "toy1",
     "toy2",
     "solar_energy",
+    "crypto",
 ]
 
 
@@ -110,6 +111,9 @@ def create_model(config):
     elif config.dset == "toy2":
         x_dim = 6
         y_dim = 20
+    elif config.dset == "crypto":
+        x_dim = 6
+        y_dim = 44
 
     assert x_dim is not None
     assert y_dim is not None
@@ -275,6 +279,7 @@ def create_dset(config):
                 else:
                     raise ValueError(f"Unrecognized toy dataset {config.dset}")
             target_cols = [f"D{i}" for i in range(1, 21)]
+            
         elif config.dset == "exchange":
             if data_path == "auto":
                 data_path = "./data/exchange_rate_converted.csv"
@@ -288,6 +293,22 @@ def create_dset(config):
                 "New Zealand",
                 "Singapore",
             ]
+        elif config.dset == "crypto":
+            if data_path == "auto":
+                data_path = "./data/Crypto/crypto_converted.csv"
+            target_cols = [ 
+                'ETH_open', 'ETH_high', 'ETHT_low', 'ETH_close',
+       'Volume ETH', 'Volume USDT', 'ETH_tradecount', 'BTC_open', 'BTC_high',
+       'BTC_low', 'BTC_close', 'Volume BTC', 'BTC_tradecount', 'LINK_open',
+       'LINK_high', 'LINK_low', 'LINK_close', 'Volume LINK', 'LINK_tradecount',
+       'EOS_open', 'EOS_high', 'EOS_low', 'EOS_close', 'Volume EOS',
+       'EOS_tradecount', 'XMR_open', 'XMR_high', 'XMR_low', 'XMR_close',
+       'Volume XMR', 'XMR_tradecount', 'NEO_open', 'NEO_high', 'NEO_low',
+       'NEO_close', 'Volume NEO', 'NEO_tradecount', 'LTCUSDT_open',
+       'LTCUSDT_high', 'LTCUSDT_low', 'LTCUSDT_close', 'Volume LTC',
+       'LTCUSDT_tradecount', 'sntiments'
+       ]
+        
         dset = stf.data.CSVTimeSeries(
             data_path=data_path,
             target_cols=target_cols,
