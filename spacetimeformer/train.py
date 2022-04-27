@@ -113,7 +113,7 @@ def create_model(config):
         y_dim = 20
     elif config.dset == "crypto":
         x_dim = 6
-        y_dim = 12
+        y_dim = 44
 
     assert x_dim is not None
     assert y_dim is not None
@@ -296,20 +296,18 @@ def create_dset(config):
         elif config.dset == "crypto":
             if data_path == "auto":
                 data_path = "./data/Crypto/crypto_converted.csv"
-            target_cols = [
-                'ETH_open',
-                 'ETH_high',
-                 'ETHT_low',
-                 'ETH_close',
-                 'Volume BTC',
-                 'Volume USDT',
-                 'ETH_tradecount',
-                 'BTC_open',
-                 'BTC_high',
-                  'BTC_low',
-                  'BTC_close',
-                  'BTC_tradecount',
-                 ]
+            target_cols = [ 
+                'ETH_open', 'ETH_high', 'ETHT_low', 'ETH_close',
+       'Volume ETH', 'Volume USDT', 'ETH_tradecount', 'BTC_open', 'BTC_high',
+       'BTC_low', 'BTC_close', 'Volume BTC', 'BTC_tradecount', 'LINK_open',
+       'LINK_high', 'LINK_low', 'LINK_close', 'Volume LINK', 'LINK_tradecount',
+       'EOS_open', 'EOS_high', 'EOS_low', 'EOS_close', 'Volume EOS',
+       'EOS_tradecount', 'XMR_open', 'XMR_high', 'XMR_low', 'XMR_close',
+       'Volume XMR', 'XMR_tradecount', 'NEO_open', 'NEO_high', 'NEO_low',
+       'NEO_close', 'Volume NEO', 'NEO_tradecount', 'LTCUSDT_open',
+       'LTCUSDT_high', 'LTCUSDT_low', 'LTCUSDT_close', 'Volume LTC',
+       'LTCUSDT_tradecount', 'sntiments'
+       ]
         
         dset = stf.data.CSVTimeSeries(
             data_path=data_path,
