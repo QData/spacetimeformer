@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 import numpy as np
 
-from math import sqrt
+from math import sqrt, log
 from ..utils.masking import TriangularCausalMask, ProbMask
 
 
@@ -160,6 +160,7 @@ class PerformerAttention(_FastAttention):
         super().__init__(
             dim_heads=dim_heads,
             ortho_scaling=ortho_scaling,
+            nb_features=max(100, int(dim_heads * log(dim_heads))),
             causal=mask_flag,
             generalized_attention=kernel == "relu",
             kernel_fn=nn.ReLU() if kernel == "relu" else "N/A",
@@ -360,7 +361,7 @@ class AttentionLayer(nn.Module):
             # never explicitly compute them (e.g. Performer). It is inspired
             # by a comment in the Performer appendix.
             onehot_values = (
-                torch.eye(L).unsqueeze(0).repeat(B, 1, 1).unsqueeze(2).to(values.device)
+                torch.eye(S).unsqueeze(0).repeat(B, 1, 1).unsqueeze(2).to(values.device)
             )
             with torch.no_grad():
                 attn, _ = self.inner_attention(

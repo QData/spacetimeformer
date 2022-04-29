@@ -3,6 +3,7 @@ from typing import Tuple
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.distributions import Normal
 import pytorch_lightning as pl
 import torchmetrics
 
@@ -12,7 +13,8 @@ import spacetimeformer as stf
 class Spacetimeformer_Forecaster(stf.Forecaster):
     def __init__(
         self,
-        d_y: int = 1,
+        d_yc: int = 1,
+        d_yt: int = 1,
         d_x: int = 4,
         start_token_len: int = 64,
         attn_factor: int = 5,
@@ -51,9 +53,17 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         null_value: float = None,
         verbose=True,
     ):
-        super().__init__(l2_coeff=l2_coeff, loss=loss, linear_window=linear_window)
+        super().__init__(
+            d_x=d_x,
+            d_yc=d_yc,
+            d_yt=d_yt,
+            l2_coeff=l2_coeff,
+            loss=loss,
+            linear_window=linear_window,
+        )
         self.spacetimeformer = stf.spacetimeformer_model.nn.Spacetimeformer(
-            d_y=d_y,
+            d_yc=d_yc,
+            d_yt=d_yt,
             d_x=d_x,
             start_token_len=start_token_len,
             attn_factor=attn_factor,
@@ -94,20 +104,20 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         self.set_null_value(null_value)
 
         qprint = lambda _msg_: print(_msg_) if verbose else None
-        qprint(f" *** Spacetimeformer Summary: *** ")
-        qprint(f"\tModel Dim: {d_model}")
-        qprint(f"\tFF Dim: {d_ff}")
-        qprint(f"\tEnc Layers: {e_layers}")
-        qprint(f"\tDec Layers: {d_layers}")
-        qprint(f"\tEmbed Dropout: {dropout_emb}")
-        qprint(f"\tToken Dropout: {dropout_token}")
-        qprint(f"\tFF Dropout: {dropout_ff}")
-        qprint(f"\tAttn Out Dropout: {dropout_attn_out}")
-        qprint(f"\tQKV Dropout: {dropout_qkv}")
-        qprint(f"\tL2 Coeff: {l2_coeff}")
-        qprint(f"\tWarmup Steps: {warmup_steps}")
-        qprint(f"\tNormalization Scheme: {norm}")
-        qprint(f" ***                         *** ")
+        qprint(f" *** Spacetimeformer (v1.5) Summary: *** ")
+        qprint(f"\t\tModel Dim: {d_model}")
+        qprint(f"\t\tFF Dim: {d_ff}")
+        qprint(f"\t\tEnc Layers: {e_layers}")
+        qprint(f"\t\tDec Layers: {d_layers}")
+        qprint(f"\t\tEmbed Dropout: {dropout_emb}")
+        qprint(f"\t\tToken Dropout: {dropout_token}")
+        qprint(f"\t\tFF Dropout: {dropout_ff}")
+        qprint(f"\t\tAttn Out Dropout: {dropout_attn_out}")
+        qprint(f"\t\tQKV Dropout: {dropout_qkv}")
+        qprint(f"\t\tL2 Coeff: {l2_coeff}")
+        qprint(f"\t\tWarmup Steps: {warmup_steps}")
+        qprint(f"\t\tNormalization Scheme: {norm}")
+        qprint(f" ***                                 *** ")
 
     @property
     def train_step_forward_kwargs(self):
@@ -130,22 +140,13 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
             forward_kwargs=kwargs,
         )
 
+        assert torch.isnan(output).sum() == 0
         *_, y_t = batch
-        stats = self._compute_stats(mask * output, mask * y_t)
+        stats = self._compute_stats(mask * output, mask * torch.nan_to_num(y_t))
         stats["forecast_loss"] = forecast_loss
         stats["class_loss"] = class_loss
         stats["loss"] = forecast_loss + self.class_loss_imp * class_loss
         stats["acc"] = acc
-
-        """
-        # temporary traffic stats:
-        preds = self._inv_scaler(output.detach().cpu().numpy())
-        true = self._inv_scaler(y_t.detach().cpu().numpy())
-        mask = mask.detach().cpu().numpy()
-        time_based_mae = abs((mask * preds) - (mask * true)).mean((0, -1))
-        for time_idx in range(len(time_based_mae)):
-            stats[f"mae_traffic_time_{time_idx}"] = time_based_mae[time_idx]
-        """
         return stats
 
     def classification_loss(
@@ -180,6 +181,10 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
             class_loss, acc = 0.0, -1.0
 
         return forecast_loss, class_loss, acc, outputs.mean, mask
+
+    def nan_to_num(self, *inps):
+        # override to let embedding handle NaNs
+        return inps
 
     def forward_model_pass(self, x_c, y_c, x_t, y_t, output_attn=False):
         if len(y_c.shape) == 2:
@@ -219,7 +224,9 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
-            self.parameters(), lr=self.base_lr, weight_decay=self.l2_coeff,
+            self.parameters(),
+            lr=self.base_lr,
+            weight_decay=self.l2_coeff,
         )
         scheduler = stf.lr_scheduler.WarmupReduceLROnPlateau(
             optimizer,
