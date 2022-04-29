@@ -13,8 +13,10 @@ from .LSTNet import LSTNet
 class LSTNet_Forecaster(stf.Forecaster):
     def __init__(
         self,
+        d_x: int,
+        d_yc: int,
+        d_yt: int,
         context_points: int,
-        d_y: int,
         hidRNN: int = 100,
         hidCNN: int = 100,
         hidSkip: int = 5,
@@ -29,9 +31,18 @@ class LSTNet_Forecaster(stf.Forecaster):
     ):
         if linear_window == 0:
             warnings.warn(f"LSTNet linear window arg set to zero!")
+        assert (
+            d_yc == d_yt
+        ), "LSTNet requires the same number of context and target variables"
 
         super().__init__(
-            l2_coeff=l2_coeff, learning_rate=learning_rate, loss=loss, linear_window=0
+            d_x=d_x,
+            d_yc=d_yc,
+            d_yt=d_yt,
+            l2_coeff=l2_coeff,
+            learning_rate=learning_rate,
+            loss=loss,
+            linear_window=0,
         )
 
         self.model = LSTNet(
@@ -43,7 +54,7 @@ class LSTNet_Forecaster(stf.Forecaster):
             skip=skip,
             highway_window=linear_window,
             dropout=dropout_p,
-            m=d_y,
+            m=d_yt,
             output_fun=output_fun,
         )
 
