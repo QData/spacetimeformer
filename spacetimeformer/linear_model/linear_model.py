@@ -11,13 +11,22 @@ from .linear_ar import LinearModel
 class Linear_Forecaster(stf.Forecaster):
     def __init__(
         self,
+        d_x: int,
+        d_yc: int,
+        d_yt: int,
         context_points: int,
         learning_rate: float = 1e-3,
         l2_coeff: float = 0,
         loss: str = "mse",
         linear_window: int = 0,
     ):
+        assert (
+            d_yc == d_yt
+        ), "Linear Model requires the same number of context and target variables"
         super().__init__(
+            d_x=d_x,
+            d_yc=d_yc,
+            d_yt=d_yt,
             l2_coeff=l2_coeff,
             learning_rate=learning_rate,
             loss=loss,
