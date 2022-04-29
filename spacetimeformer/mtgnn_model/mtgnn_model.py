@@ -25,8 +25,9 @@ except ImportError:
 class MTGNN_Forecaster(stf.Forecaster):
     def __init__(
         self,
-        d_y: int,
         d_x: int,
+        d_yc: int,
+        d_yt: int,
         context_points: int,
         target_points: int,
         use_gcn_layer: bool = True,
@@ -51,13 +52,19 @@ class MTGNN_Forecaster(stf.Forecaster):
         loss: str = "mae",
         linear_window: int = 0,
     ):
+        assert (
+            d_yc == d_yt
+        ), "MTGNN requires the same number of context and target variables"
         super().__init__(
+            d_x=d_x,
+            d_yc=d_yc,
+            d_yt=d_yt,
             l2_coeff=l2_coeff,
             learning_rate=learning_rate,
             loss=loss,
             linear_window=linear_window,
         )
-        subgraph_size = min(subgraph_size, d_y)
+        subgraph_size = min(subgraph_size, d_yt)
         self.learning_rate = learning_rate
 
         self.time2vec = stf.Time2Vec(input_dim=d_x, embed_dim=time_emb_dim)
@@ -66,7 +73,7 @@ class MTGNN_Forecaster(stf.Forecaster):
             gcn_true=use_gcn_layer,
             build_adj=adaptive_adj_mat,
             gcn_depth=gcn_depth,
-            num_nodes=d_y,
+            num_nodes=d_yt,
             kernel_set=kernel_set,
             kernel_size=kernel_size,
             dropout=dropout_p,
@@ -86,8 +93,6 @@ class MTGNN_Forecaster(stf.Forecaster):
             layer_norm_affline=True,
         )
 
-        self.d_y = d_y
-
     @property
     def eval_step_forward_kwargs(self):
         return {}
@@ -103,7 +108,7 @@ class MTGNN_Forecaster(stf.Forecaster):
         # y_c = (batch, len, nodes) --> (batch, 1, nodes, len)
         y_c = y_c.transpose(-1, 1).unsqueeze(1)
         # x_c = (batch, len, d_x) --> (batch, d_x, nodes, len)
-        x_c = x_c.transpose(-1, 1).unsqueeze(-2).repeat(1, 1, self.d_y, 1)
+        x_c = x_c.transpose(-1, 1).unsqueeze(-2).repeat(1, 1, self.d_yc, 1)
         ctxt = torch.cat((x_c, y_c), dim=1)
         output = self.model.forward(ctxt).squeeze(-1)
         return (output,)
