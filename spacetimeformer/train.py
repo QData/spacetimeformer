@@ -22,7 +22,6 @@ _DSETS = [
     "toy1",
     "toy2",
     "solar_energy",
-    "syn",
     "mnist",
     "cifar",
     "copy",
@@ -49,9 +48,6 @@ def create_parser():
         stf.data.precip.CONUS_Precip.add_cli(parser)
     elif dset == "metr-la" or dset == "pems-bay":
         stf.data.metr_la.METR_LA_Data.add_cli(parser)
-    elif dset == "syn":
-        stf.data.synthetic.SyntheticData.add_cli(parser)
-        stf.data.CSVTorchDset.add_cli(parser)
     elif dset == "mnist":
         stf.data.image_completion.MNISTDset.add_cli(parser)
     elif dset == "cifar":
@@ -130,10 +126,6 @@ def create_model(config):
         yc_dim = 20
         yt_dim = 20
     elif config.dset == "toy2":
-        x_dim = 6
-        yc_dim = 20
-        yt_dim = 20
-    elif config.dset == "syn":
         x_dim = 6
         yc_dim = 20
         yt_dim = 20
@@ -327,21 +319,6 @@ def create_dset(config):
             workers=config.workers,
         )
         NULL_VAL = -1.0
-    elif config.dset == "syn":
-        dset = stf.data.synthetic.SyntheticData()
-        DATA_MODULE = stf.data.DataModule(
-            datasetCls=stf.data.CSVTorchDset,
-            dataset_kwargs={
-                "csv_time_series": dset,
-                "context_points": config.context_points,
-                "target_points": config.target_points,
-                "time_resolution": config.time_resolution,
-            },
-            batch_size=config.batch_size,
-            workers=config.workers,
-        )
-        INV_SCALER = dset.reverse_scaling
-        SCALER = dset.apply_scaling
     elif config.dset in ["mnist", "cifar"]:
         if config.dset == "mnist":
             config.target_points = 28 * 28 - config.context_points
