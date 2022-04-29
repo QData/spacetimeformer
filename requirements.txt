@@ -16,3 +16,4 @@ omegaconf
 seaborn
 opencv-python
 wandb
+einops

@@ -2,23 +2,24 @@ import pytorch_lightning as pl
 
 
 class TeacherForcingAnnealCallback(pl.Callback):
-    def __init__(self, start, end, epochs):
+    def __init__(self, start, end, steps):
         assert start >= end
         self.start = start
         self.end = end
-        self.epochs = epochs
-        self.slope = float((start - end)) / epochs
+        self.steps = steps
+        self.slope = float((start - end)) / steps
 
-    def on_validation_epoch_end(self, trainer, model):
+    def on_train_batch_end(self, trainer, model, *args, **kwargs):
         current = model.teacher_forcing_prob
         new_teacher_forcing_prob = max(self.end, current - self.slope)
         model.teacher_forcing_prob = new_teacher_forcing_prob
+        model.log("teacher_forcing_prob", new_teacher_forcing_prob)
 
     @classmethod
     def add_cli(self, parser):
         parser.add_argument("--teacher_forcing_start", type=float, default=0.8)
         parser.add_argument("--teacher_forcing_end", type=float, default=0.0)
-        parser.add_argument("--teacher_forcing_anneal_epochs", type=int, default=8)
+        parser.add_argument("--teacher_forcing_anneal_steps", type=int, default=8000)
 
 
 class TimeMaskedLossCallback(pl.Callback):

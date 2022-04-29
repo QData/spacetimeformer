@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from einops import rearrange
 
 
 class LinearModel(nn.Module):
@@ -9,9 +10,11 @@ class LinearModel(nn.Module):
         self.linear = nn.Linear(context_points, 1)
 
     def forward(self, y_c):
-        bs, length, d_y = y_c.shape
+        batch, length, dy = y_c.shape
         inp = y_c[:, -self.window :, :]
-        inp = torch.cat(inp.chunk(d_y, dim=-1), dim=0)
-        baseline = self.linear(inp.squeeze(-1))
-        baseline = torch.cat(baseline.chunk(d_y, dim=0), dim=-1).unsqueeze(1)
+        inp = rearrange(inp, "batch length dy -> (batch dy) length")
+        baseline = self.linear(inp)
+        baseline = rearrange(
+            baseline, "(batch dy) length -> batch length dy", batch=batch
+        )
         return baseline

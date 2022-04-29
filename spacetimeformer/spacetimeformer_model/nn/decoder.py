@@ -39,8 +39,8 @@ class DecoderLayer(nn.Module):
         self.activation = F.relu if activation == "relu" else F.gelu
         self.post_norm = post_norm
 
-    def forward(self, x, cross, x_mask=None, cross_mask=None):
-
+    def forward(self, x, cross, x_mask=None, cross_mask=None, output_cross_attn=False):
+        attn = None
         # see https://arxiv.org/abs/2002.04745 Figure 1
         if self.post_norm:
             if self.local_self_attention:
@@ -62,11 +62,10 @@ class DecoderLayer(nn.Module):
                 x = self.norm3(x)
 
             if self.global_cross_attention:
-                x = x + self.dropout(
-                    self.global_cross_attention(x, cross, cross, attn_mask=cross_mask)[
-                        0
-                    ]
+                new_x, attn = self.global_cross_attention(
+                    x, cross, cross, attn_mask=cross_mask, output_attn=output_cross_attn
                 )
+                x = x + self.dropout(new_x)
                 x = self.norm4(x)
 
             y = self.dropout(self.activation(self.conv1(x.transpose(-1, 1))))
@@ -99,18 +98,21 @@ class DecoderLayer(nn.Module):
 
             if self.global_cross_attention:
                 x_norm = self.norm4(x)
-                x = x + self.dropout(
-                    self.global_cross_attention(
-                        x_norm, cross, cross, attn_mask=cross_mask
-                    )[0]
+                new_x, attn = self.global_cross_attention(
+                    x_norm,
+                    cross,
+                    cross,
+                    attn_mask=cross_mask,
+                    output_attn=output_cross_attn,
                 )
+                x = x + self.dropout(new_x)
 
             x_norm = self.norm5(x)
             x_norm = self.dropout(self.activation(self.conv1(x_norm.transpose(-1, 1))))
             x_norm = self.dropout(self.conv2(x_norm).transpose(-1, 1))
             output = x + x_norm
 
-        return output
+        return output, attn
 
 
 from .data_dropout import DataDropout
@@ -125,12 +127,28 @@ class Decoder(nn.Module):
         self.emb_dropout = nn.Dropout(emb_dropout)
         self.data_dropout = DataDropout(data_dropout)
 
-    def forward(self, val_time_emb, space_emb, cross, x_mask=None, cross_mask=None):
+    def forward(
+        self,
+        val_time_emb,
+        space_emb,
+        cross,
+        x_mask=None,
+        cross_mask=None,
+        output_cross_attn=False,
+    ):
         x = self.data_dropout(self.emb_dropout(val_time_emb + space_emb))
+        attns = []
         for i, layer in enumerate(self.layers):
-            x = layer(x, cross, x_mask=x_mask, cross_mask=cross_mask)
+            x, attn = layer(
+                x,
+                cross,
+                x_mask=x_mask,
+                cross_mask=cross_mask,
+                output_cross_attn=output_cross_attn,
+            )
+            attns.append(attn)
 
         if self.norm is not None:
             x = self.norm(x)
 
-        return x
+        return x, attns

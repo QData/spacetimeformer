@@ -81,7 +81,11 @@ class LSTM_Seq2Seq(nn.Module):
         merged_context = self._merge(x_context, y_context)
         hidden, cell = self.encoder(merged_context)
 
-        decoder_input = self._merge(x_context[:, -1], y_context[:, -1]).unsqueeze(1)
+        decoder_input = (
+            self._merge(x_context[:, -1], torch.zeros_like(y_target[:, 0]))
+            .unsqueeze(1)
+            .to(y_context.device)
+        )
 
         for t in range(0, pred_len):
             output, hidden, cell = self.decoder(decoder_input, hidden, cell)
@@ -100,7 +104,8 @@ class LSTM_Forecaster(stf.Forecaster):
     def __init__(
         self,
         d_x: int = 6,
-        d_y: int = 1,
+        d_yc: int = 1,
+        d_yt: int = 1,
         time_emb_dim: int = 0,
         n_layers: int = 2,
         hidden_dim: int = 32,
@@ -113,24 +118,27 @@ class LSTM_Forecaster(stf.Forecaster):
         linear_window: int = 0,
     ):
         super().__init__(
+            d_x=d_x,
+            d_yc=d_yc,
+            d_yt=d_yt,
             l2_coeff=l2_coeff,
             learning_rate=learning_rate,
             loss=loss,
             linear_window=linear_window,
         )
-        self.t2v = stf.Time2Vec(input_dim=d_x, embed_dim=time_emb_dim)
+        self.t2v = stf.Time2Vec(input_dim=d_x, embed_dim=time_emb_dim * d_x)
 
-        input_dim = (time_emb_dim if time_emb_dim > 0 else d_x) + d_y
+        time_dim = time_emb_dim * d_x if time_emb_dim > 0 else d_x
 
         self.encoder = LSTM_Encoder(
-            input_dim=input_dim,
+            input_dim=time_dim + d_yc,
             hidden_dim=hidden_dim,
             n_layers=n_layers,
             dropout=dropout_p,
         )
         self.decoder = LSTM_Decoder(
-            output_dim=d_y,
-            input_dim=input_dim,
+            output_dim=d_yt,
+            input_dim=time_dim + d_yt,
             hidden_dim=hidden_dim,
             n_layers=n_layers,
             dropout=dropout_p,
