@@ -23,6 +23,7 @@ class Forecaster(pl.LightningModule, ABC):
     ):
         super().__init__()
         self._inv_scaler = lambda x: x
+        self._scaler = lambda x: x
         self.l2_coeff = l2_coeff
         self.learning_rate = learning_rate
         self.time_masked_idx = None
