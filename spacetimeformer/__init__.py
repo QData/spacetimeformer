@@ -10,3 +10,4 @@ from . import lstm_model
 from . import mtgnn_model
 from . import spacetimeformer_model
 from . import linear_model
+from . import s4_model
