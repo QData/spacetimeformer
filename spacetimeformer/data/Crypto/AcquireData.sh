@@ -16,6 +16,9 @@ sed -i '1d' LINKUSDT_Binance_futures_data_hour.csv
 sed -i '1d' EOSUSDT_Binance_futures_data_hour.csv
 sed -i '1d' XMRUSDT_Binance_futures_data_hour.csv
 sed -i '1d' NEOUSDT_Binance_futures_data_hour.csv
+echo "creating dataset"
+python ConvertData.py
+echo "cleaning up"
 rm BTCUSDT_Binance_futures_data_hour.csv
 rm ETHUSDT_Binance_futures_data_hour.csv
 rm LINKUSDT_Binance_futures_data_hour.csv
@@ -23,5 +26,3 @@ rm EOSUSDT_Binance_futures_data_hour.csv
 rm NEOUSDT_Binance_futures_data_hour.csv
 rm LTCUSDT_Binance_futures_data_hour.csv
 rm XMRUSDT_Binance_futures_data_hour.csv
-echo "creating dataset"
-python ConvertData.py
