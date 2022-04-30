@@ -17,3 +17,4 @@ omegaconf
 seaborn
 opencv-python
 wandb
+scipy==1.2.0
