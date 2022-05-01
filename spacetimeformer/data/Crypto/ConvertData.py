@@ -1,6 +1,7 @@
 import pandas as pd
 import requests
 from datetime import datetime
+
 BTCUSDT = pd.read_csv('BTCUSDT_Binance_futures_data_hour.csv', parse_dates = ['date']).sort_values(by = 'date').reset_index(drop = True)
 ETHUSDT = pd.read_csv('ETHUSDT_Binance_futures_data_hour.csv', parse_dates = ['date']).sort_values(by = 'date').reset_index(drop = True)
 LINKUSDT = pd.read_csv('LINKUSDT_Binance_futures_data_hour.csv', parse_dates = ['date']).sort_values(by = 'date').reset_index(drop = True)
@@ -51,7 +52,7 @@ for index, row in df.iterrows():
   sntiments.append(s["sentiment"].values[0])
 df["sntiments"] = sntiments
 count = len(df)
-df = df.dropna()
+df.dropna()
 
 print("cleaning data said total rows left", count, "total rows left", len(df))
 print("saving data to csv")
