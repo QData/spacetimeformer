@@ -444,14 +444,7 @@ def create_dset(config):
                 "EOS_close",
                 "XMR_close",
                 "NEO_close",
-                "LTC_close",
-                "ETH_high",
-                "BTC_high",
-                "LINK_high",
-                "EOS_high",
-                "XMR_high",
-                "NEO_high",
-                "LTC_high",
+                "LTC_close"
             ]
             PLOT_VAR_IDXS = [target_cols.index(x) for x in PLOT_VAR_NAMES]
 
