@@ -26,6 +26,7 @@ _DSETS = [
     "cifar",
     "copy",
     "crypto",
+    "crypto_normalized",
 ]
 
 
@@ -383,9 +384,12 @@ def create_dset(config):
                 "New Zealand",
                 "Singapore",
             ]
-        elif config.dset == "crypto":
+        elif "crypto" in config.dset:
             if data_path == "auto":
-                data_path = "./data/crypto_dset.csv"
+                if config.dset == "crypto":
+                    data_path = "./data/crypto_dset.csv"
+                elif config.dset == "crypto_normalized":
+                    data_path = "./data/crypto_dset_normalized.csv"
             target_cols = [
                 'ETH_open',
                 'ETH_high',

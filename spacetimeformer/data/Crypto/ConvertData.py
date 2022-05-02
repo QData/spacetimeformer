@@ -1,3 +1,4 @@
+from calendar import c
 import pandas as pd
 import requests
 from datetime import datetime
@@ -57,6 +58,13 @@ df.dropna()
 print("cleaning data said total rows left", count, "total rows left", len(df))
 print("saving data to csv")
 df.to_csv('../crypto_dset.csv', index = False)
+
+for col in df.columns:
+  if col != "Datetime" and col != "sntiments":
+    df[col] = df[col].pct_change()
+
+df.to_csv('../crypto_dset_normalized.csv', index = False)
+
 print("done")
 print(df.columns)
 print(len(df.columns))
