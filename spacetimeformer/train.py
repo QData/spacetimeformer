@@ -26,6 +26,7 @@ _DSETS = [
     "cifar",
     "copy",
     "crypto",
+    "crypto_normalized",
 ]
 
 
@@ -143,8 +144,8 @@ def create_model(config):
         yt_dim = config.copy_vars
     elif config.dset == "crypto":
         x_dim = 6
-        yc_dim = 18
-        yt_dim = 18
+        yc_dim = 44
+        yt_dim = 44
     assert x_dim is not None
     assert yc_dim is not None
     assert yt_dim is not None
@@ -369,6 +370,7 @@ def create_dset(config):
                 else:
                     raise ValueError(f"Unrecognized toy dataset {config.dset}")
             target_cols = [f"D{i}" for i in range(1, 21)]
+            
         elif config.dset == "exchange":
             if data_path == "auto":
                 data_path = "./data/exchange_rate_converted.csv"
@@ -382,31 +384,68 @@ def create_dset(config):
                 "New Zealand",
                 "Singapore",
             ]
-        elif config.dset == "crypto":
+        elif "crypto" in config.dset:
             if data_path == "auto":
-                data_path = "./data/crypto_dset.csv"
+                if config.dset == "crypto":
+                    data_path = "./data/crypto_dset.csv"
+                elif config.dset == "crypto_normalized":
+                    data_path = "./data/crypto_dset_normalized.csv"
             target_cols = [
-                "ETH_open",
-                "ETH_high",
-                "ETHT_low",
-                "ETH_close",
-                "Volume BTC",
-                "Volume USDT",
-                "ETH_tradecount",
-                "BTC_open",
-                "BTC_high",
-                "BTC_low",
-                "BTC_close",
-                "BTC_tradecount",
-                "LTCUSDT_open",
-                "LTCUSDT_high",
-                "LTCUSDT_low",
-                "LTCUSDT_close",
-                "Volume LTC",
-                "LTCUSDT_tradecount",
+                'ETH_open',
+                'ETH_high',
+                'ETHT_low',
+                'ETH_close',
+                'Volume ETH',
+                'Volume USDT',
+                'ETH_tradecount',
+                'BTC_open',
+                'BTC_high',
+                'BTC_low',
+                'BTC_close',
+                'Volume BTC',
+                'BTC_tradecount',
+                'LINK_open',
+                'LINK_high',
+                'LINK_low',
+                'LINK_close',
+                'Volume LINK',
+                'LINK_tradecount',
+                'EOS_open',
+                'EOS_high',
+                'EOS_low',
+                'EOS_close',
+                'Volume EOS',
+                'EOS_tradecount',
+                'XMR_open',
+                'XMR_high',
+                'XMR_low',
+                'XMR_close',
+                'Volume XMR',
+                'XMR_tradecount',
+                'NEO_open',
+                'NEO_high',
+                'NEO_low',
+                'NEO_close',
+                'Volume NEO',
+                'NEO_tradecount',
+                'LTC_open',
+                'LTC_high',
+                'LTC_low',
+                'LTC_close',
+                'Volume LTC',
+                'LTC_tradecount',
+                'sntiments'
             ]
             # only make plots of a few vars
-            PLOT_VAR_NAMES = ["ETH_close", "BTC_close", "ETH_high", "BTC_high"]
+            PLOT_VAR_NAMES = [
+                "ETH_close",
+                "BTC_close",
+                "LINK_close",
+                "EOS_close",
+                "XMR_close",
+                "NEO_close",
+                "LTC_close"
+            ]
             PLOT_VAR_IDXS = [target_cols.index(x) for x in PLOT_VAR_NAMES]
 
         dset = stf.data.CSVTimeSeries(
