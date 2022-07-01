@@ -9,6 +9,13 @@ https://gist.github.com/bshishov/5dc237f59f019b26145648e2124ca1c9
 EPSILON = 1e-10
 
 
+def r_squared(actual: np.ndarray, predicted: np.ndarray):
+    rss = (_error(actual, predicted) ** 2).sum(1)
+    tss = (_error(actual, actual.mean(1, keepdims=True)) ** 2).sum(1)
+    r2 = 1.0 - rss / (tss + EPSILON)
+    return r2.mean()
+
+
 def _error(actual: np.ndarray, predicted: np.ndarray):
     """Simple error"""
     return actual - predicted

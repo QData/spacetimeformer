@@ -23,10 +23,16 @@ def _assert_squeeze(x):
     return x.squeeze(-1)
 
 
-def plot(x_c, y_c, x_t, y_t, idx, title, preds, conf=None):
+def plot(x_c, y_c, x_t, y_t, idx, title, preds, pad_val=None, conf=None):
     y_c = y_c[..., idx]
     y_t = y_t[..., idx]
     preds = preds[..., idx]
+
+    if pad_val is not None:
+        y_c = y_c[y_c != pad_val]
+        yt_mask = y_t != pad_val
+        y_t = y_t[yt_mask]
+        preds = preds[yt_mask]
 
     fig, ax = plt.subplots(figsize=(7, 4))
     xaxis_c = np.arange(len(y_c))
@@ -44,7 +50,7 @@ def plot(x_c, y_c, x_t, y_t, idx, title, preds, conf=None):
             xaxis_t, (preds - conf), (preds + conf), color="orange", alpha=0.1
         )
     ax.legend(loc="upper left", prop={"size": 12})
-    ax.set_facecolor("#f0f0f0")
+    # ax.set_facecolor("#f0f0f0")
     ax.set_xticks([])
     ax.set_xlabel("")
     ax.set_ylabel("")
@@ -67,11 +73,13 @@ class PredictionPlotterCallback(pl.Callback):
         test_batch,
         var_idxs=None,
         var_names=None,
+        pad_val=None,
         total_samples=4,
         log_to_wandb=True,
     ):
         self.test_data = test_batch
         self.total_samples = total_samples
+        self.pad_val = pad_val
         self.log_to_wandb = log_to_wandb
 
         if var_idxs is None and var_names is None:
@@ -88,11 +96,7 @@ class PredictionPlotterCallback(pl.Callback):
         x_c, y_c, x_t, y_t = [i[idxs].detach().to(model.device) for i in self.test_data]
         with torch.no_grad():
             preds, *_ = model(x_c, y_c, x_t, y_t, **model.eval_step_forward_kwargs)
-            if isinstance(preds, pyd.Normal):
-                preds_std = preds.scale.squeeze(-1).cpu().numpy()
-                preds = preds.mean
-            else:
-                preds_std = [None for _ in range(preds.shape[0])]
+            preds_std = [None for _ in range(preds.shape[0])]
 
         imgs = []
         for i in range(preds.shape[0]):
@@ -106,7 +110,8 @@ class PredictionPlotterCallback(pl.Callback):
                     idx=var_idx,
                     title=var_name,
                     preds=preds[i].cpu().numpy(),
-                    conf=preds_std[i],
+                    pad_val=self.pad_val,
+                    conf=preds_std[i] if model.loss == "nll" else None,
                 )
                 if img is not None:
                     if self.log_to_wandb:
@@ -115,41 +120,62 @@ class PredictionPlotterCallback(pl.Callback):
 
         if self.log_to_wandb:
             trainer.logger.experiment.log(
-                {"test/prediction_plots": imgs, "global_step": trainer.global_step,}
+                {
+                    "test/prediction_plots": imgs,
+                    "global_step": trainer.global_step,
+                }
             )
         else:
             self.imgs = imgs
 
 
 class ImageCompletionCallback(pl.Callback):
-    def __init__(self, test_batches, total_samples=12):
+    def __init__(self, test_batches, total_samples=12, mode="flat"):
+        assert mode in ["flat", "left-right"]
+        self.mode = mode
         self.test_data = test_batches
         self.total_samples = total_samples
+        self._count = 0
 
-    def on_validation_end(self, trainer, model):
+    def complete_flat_img(self, trainer, model):
         with torch.no_grad():
-            idxs = [
-                random.sample(range(self.test_data[0].shape[0]), k=self.total_samples)
-            ]
+            idxs = [i for i in range(self.total_samples)]
             x_c, y_c, x_t, y_t = [
                 i[idxs].detach().to(model.device) for i in self.test_data
             ]
             preds, *_ = model(x_c, y_c, x_t, y_t, **model.eval_step_forward_kwargs)
-
-        if isinstance(preds, pyd.Normal):
-            preds = preds.mean
-
         completed_imgs = torch.cat((y_c, preds.clamp(0.0, 1.0)), dim=-2)
         shp = int(math.sqrt(completed_imgs.shape[-2]))  # (assumes square images)
         completed_imgs = rearrange(completed_imgs, "b (h w) c -> b c h w", h=shp)
+        return completed_imgs
 
-        imgs = []
+    def complete_left_right_img(self, trainer, model):
+        with torch.no_grad():
+            idxs = [i for i in range(self.total_samples)]
+            x_c, y_c, x_t, y_t = [
+                i[idxs].detach().to(model.device) for i in self.test_data
+            ]
+            preds, *_ = model(x_c, y_c, x_t, y_t, **model.eval_step_forward_kwargs)
+        completed_imgs = torch.cat((y_c, preds.clamp(0.0, 1.0)), dim=1).transpose(1, 2)
+        return completed_imgs
+
+    def on_validation_end(self, trainer, model):
+
+        if self.mode == "flat":
+            completed_imgs = self.complete_flat_img(trainer, model)
+        elif self.mode == "left-right":
+            completed_imgs = self.complete_left_right_img(trainer, model)
+
+        plots = []
         for i in range(completed_imgs.shape[0]):
-            img = wandb.Image(completed_imgs[i])
-            imgs.append(img)
+            plot = wandb.Image(completed_imgs[i])
+            plots.append(plot)
 
         trainer.logger.experiment.log(
-            {"test/images": imgs, "global_step": trainer.global_step,}
+            {
+                "test/images": plots,
+                "global_step": trainer.global_step,
+            }
         )
 
 
@@ -168,9 +194,6 @@ class CopyTaskCallback(pl.Callback):
             ]
             preds, *_ = model(x_c, y_c, x_t, y_t, **model.eval_step_forward_kwargs)
 
-        if isinstance(preds, pyd.Normal):
-            preds = preds.mean
-
         boundary = torch.ones_like(x_t)
         image_tensor = torch.cat((preds, boundary, boundary, y_t), dim=-1)
         imgs = []
@@ -179,16 +202,20 @@ class CopyTaskCallback(pl.Callback):
             imgs.append(img)
 
         trainer.logger.experiment.log(
-            {"test/images": imgs, "global_step": trainer.global_step,}
+            {
+                "test/images": imgs,
+                "global_step": trainer.global_step,
+            }
         )
 
 
-def attn_plot(attn, title, tick_spacing=None):
+def show_image(data, title, tick_spacing=None, cmap="Blues"):
     fig, ax = plt.subplots(figsize=(5, 5))
-    plt.imshow(attn.cpu().numpy(), cmap="Blues")
+
+    plt.imshow(data, cmap=cmap)
     if tick_spacing:
-        plt.xticks(np.arange(0, attn.shape[0] + 1, tick_spacing))
-        plt.yticks(np.arange(0, attn.shape[0] + 1, tick_spacing))
+        plt.xticks(np.arange(0, data.shape[0] + 1, tick_spacing))
+        plt.yticks(np.arange(0, data.shape[0] + 1, tick_spacing))
 
     plt.title(title)
     buf = io.BytesIO()
@@ -255,18 +282,34 @@ class AttentionMatrixCallback(pl.Callback):
             else:
                 a_head = attns[head]
 
-            a_head = (a_head - a_head.mean()) / (a_head.std() + 1e-5)
+            a_head /= torch.max(a_head, dim=-1)[0].unsqueeze(1)
 
             imgs.append(
                 wandb.Image(
-                    attn_plot(
-                        a_head,
+                    show_image(
+                        a_head.cpu().numpy(),
                         f"{img_title_prefix} Head {str(head)}",
-                        tick_spacing=a_head.shape[-1],
+                        tick_spacing=a_head.shape[-2],
+                        cmap="Blues",
                     )
                 )
             )
         return imgs
+
+    def _pos_sim_scores(self, embedding, seq_len, device):
+        if embedding.position_emb == "t2v":
+            inp = torch.arange(seq_len).float().to(device).view(1, -1, 1)
+            encoder_embs = embedding.local_emb(inp)[0, :, 1:]
+        elif embedding.position_emb == "abs":
+            encoder_embs = embedding.local_emb(torch.arange(seq_len).to(device).long())
+        cos_sim = torch.nn.CosineSimilarity(dim=0)
+        scores = np.zeros((seq_len, seq_len))
+        for i in range(seq_len):
+            for j in range(0, i + 1):
+                sim = cos_sim(encoder_embs[i], encoder_embs[j])
+                scores[i, j] = sim
+                scores[j, i] = sim
+        return scores
 
     def on_validation_end(self, trainer, model):
         self_attns, cross_attns = self._get_attns(model)
@@ -285,3 +328,35 @@ class AttentionMatrixCallback(pl.Callback):
             trainer.logger.experiment.log(
                 {"test/cross_attn": cross_attn_imgs, "global_step": trainer.global_step}
             )
+
+        enc_emb_sim = self._pos_sim_scores(
+            model.spacetimeformer.enc_embedding,
+            seq_len=self.test_data[1].shape[1],
+            device=model.device,
+        )
+        dec_emb_sim = self._pos_sim_scores(
+            model.spacetimeformer.dec_embedding,
+            seq_len=self.test_data[3].shape[1],
+            device=model.device,
+        )
+        emb_sim_imgs = [
+            wandb.Image(
+                show_image(
+                    enc_emb_sim,
+                    f"Encoder Position Emb. Similarity",
+                    tick_spacing=enc_emb_sim.shape[-1],
+                    cmap="Greens",
+                )
+            ),
+            wandb.Image(
+                show_image(
+                    dec_emb_sim,
+                    f"Decoder Position Emb. Similarity",
+                    tick_spacing=dec_emb_sim.shape[-1],
+                    cmap="Greens",
+                )
+            ),
+        ]
+        trainer.logger.experiment.log(
+            {"test/pos_embs": emb_sim_imgs, "global_step": trainer.global_step}
+        )

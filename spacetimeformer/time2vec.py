@@ -13,7 +13,9 @@ class Time2Vec(nn.Module):
             self.embed_weight = nn.parameter.Parameter(
                 torch.randn(self.input_dim, self.embed_dim)
             )
-            self.embed_bias = nn.parameter.Parameter(torch.randn(self.embed_dim))
+            self.embed_bias = nn.parameter.Parameter(
+                torch.randn(self.input_dim, self.embed_dim)
+            )
             self.act_function = act_function
 
     def forward(self, x):
