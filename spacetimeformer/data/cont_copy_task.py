@@ -5,17 +5,48 @@ from torch.utils.data import Dataset
 import numpy as np
 
 
-def _make_copy_sequence(L: int, N: int, lag_N: List[int], p: float, include_lags: bool):
+def _make_copy_sequence(
+    L: int,
+    N: int,
+    lag_N: List[int],
+    include_lags: bool,
+    split: str,
+    magnitude_matters: bool,
+    freq_shift: bool,
+):
     assert len(lag_N) == N
 
-    seq = np.random.choice([0, 1], size=(L, N), p=[1.0 - p, p])
+    a = 1.0 if not freq_shift else np.random.uniform(0.9, 1.1, size=(N,))
+    b = 0.0 if not freq_shift else np.random.uniform(-0.1, 0.1, size=(N,))
+    c = 1.0 if not freq_shift else np.random.uniform(0.9, 1.1, size=(N,))
+    if split == "train":
+        random_start = np.random.uniform(-1.0, 1.0, size=(N,))
+    elif split == "val":
+        random_start = np.random.uniform(0.0, 2.0, size=(N,))
+        a = a if not freq_shift else np.random.uniform(0.8, 1.2, size=(N,))
+        b = b if not freq_shift else np.random.uniform(-0.3, 0.3, size=(N,))
+        c = c if not freq_shift else np.random.uniform(0.7, 1.3, size=(N,))
+    elif split == "test":
+        random_start = np.random.uniform(2.0, 4.0, size=(N,))
+        a = a if not freq_shift else np.random.uniform(0.7, 1.3, size=(N,))
+        b = b if not freq_shift else np.random.uniform(-1, 1, size=(N,))
+        c = c if not freq_shift else np.random.uniform(0.25, 1.75, size=(N,))
 
-    lagged_seq = np.zeros_like(seq)
+    seq = (
+        random_start
+        + a * np.sin(c * np.expand_dims(np.arange(L), 1) + b)
+        + np.random.randn(L, N) * 0.2
+    )
+
+    lagged_seq = np.ones_like(seq) * random_start
     for i in range(N):
         if lag_N[i]:
             lagged_seq[lag_N[i] :, i] = seq[: -(lag_N[i]), i]
         else:
             lagged_seq[:, i] = seq[:, i]
+
+    if magnitude_matters:
+        lagged_seq += (1.0 + abs(random_start)) ** 2
 
     x = np.arange(0, L + 1)[:, np.newaxis] / L
     lag_N = np.array(lag_N)[np.newaxis, :]
@@ -33,15 +64,16 @@ def _make_copy_sequence(L: int, N: int, lag_N: List[int], p: float, include_lags
     return x_c, y_c, x_t, y_t
 
 
-class CopyTaskDset(Dataset):
+class ContCopyTaskDset(Dataset):
     def __init__(
         self,
         split,
         length: int,
         copy_vars: int = 4,
         lags: List[int] = None,
-        mask_prob: float = 0.2,
         include_lags: bool = False,
+        magnitude_matters: bool = False,
+        freq_shift: bool = False,
     ):
         assert split in ["train", "val", "test"]
         if lags is None:
@@ -50,9 +82,10 @@ class CopyTaskDset(Dataset):
         self.L = length
         self.N = copy_vars
         self.lag_N = lags
-        self.p = mask_prob
         self.split = split
         self.include_lags = include_lags
+        self.magnitude_matters = magnitude_matters
+        self.freq_shift = freq_shift
 
     def __len__(self):
         # arbitrary; determines lightning epoch length
@@ -63,7 +96,13 @@ class CopyTaskDset(Dataset):
 
     def __getitem__(self, i):
         return _make_copy_sequence(
-            self.L, self.N, self.lag_N, self.p, self.include_lags
+            L=self.L,
+            N=self.N,
+            lag_N=self.lag_N,
+            include_lags=self.include_lags,
+            split=self.split,
+            magnitude_matters=self.magnitude_matters,
+            freq_shift=self.freq_shift,
         )
 
     @classmethod
@@ -71,8 +110,9 @@ class CopyTaskDset(Dataset):
         parser.add_argument("--copy_length", type=int, default=20)
         parser.add_argument("--copy_vars", type=int, default=4)
         parser.add_argument("--copy_lags", type=int, nargs="+", default=None)
-        parser.add_argument("--copy_mask_prob", type=float, default=0.2)
         parser.add_argument("--copy_include_lags", action="store_true")
+        parser.add_argument("--copy_mag_matters", action="store_true")
+        parser.add_argument("--copy_freq_shift", action="store_true")
         pass
 
 

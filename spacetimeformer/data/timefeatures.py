@@ -5,6 +5,7 @@ def time_features(
     dates,
     main_df=None,
     use_features=["year", "month", "day", "weekday", "hour", "minute"],
+    time_col_name="Datetime",
 ):
     if main_df is None:
         main_df = pd.DataFrame({})
@@ -36,5 +37,5 @@ def time_features(
             lambda row: 2.0 * ((row.minute) / 59.0) - 1.0, 1
         )
 
-    main_df["Datetime"] = dates
+    main_df[time_col_name] = dates
     return main_df
