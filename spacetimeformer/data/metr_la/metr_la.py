@@ -72,9 +72,7 @@ class METR_LA_Data:
 
     @classmethod
     def add_cli(self, parser):
-        parser.add_argument(
-            "--data_path", type=str, default="./data/metr_la/"
-        )
+        parser.add_argument("--data_path", type=str, default="./data/metr_la/")
         parser.add_argument("--context_points", type=int, default=12)
 
         parser.add_argument("--target_points", type=int, default=12)
