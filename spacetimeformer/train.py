@@ -240,6 +240,8 @@ def create_model(config):
             time_emb_dim=config.time_emb_dim,
             loss=config.loss,
             linear_window=config.linear_window,
+            linear_shared_weights=config.linear_shared_weights,
+            use_seasonal_decomp=config.use_seasonal_decomp,
             use_revin=config.use_revin,
         )
     elif config.model == "lstnet":
@@ -358,7 +360,9 @@ def create_model(config):
             l2_coeff=config.l2_coeff,
             loss=config.loss,
             linear_window=config.linear_window,
+            linear_shared_weights=config.linear_shared_weights,
             use_revin=config.use_revin,
+            use_seasonal_decomp=config.use_seasonal_decomp,
         )
 
     return forecaster

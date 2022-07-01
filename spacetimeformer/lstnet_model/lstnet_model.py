@@ -28,6 +28,7 @@ class LSTNet_Forecaster(stf.Forecaster):
         l2_coeff: float = 0,
         loss: str = "mse",
         linear_window: int = 0,
+        use_revin: bool = False,
     ):
         if linear_window == 0:
             warnings.warn(f"LSTNet linear window arg set to zero!")
@@ -43,6 +44,9 @@ class LSTNet_Forecaster(stf.Forecaster):
             learning_rate=learning_rate,
             loss=loss,
             linear_window=0,
+            linear_shared_weights=False,
+            use_revin=use_revin,
+            use_seasonal_decomp=False,
         )
 
         self.model = LSTNet(

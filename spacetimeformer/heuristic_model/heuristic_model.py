@@ -54,6 +54,8 @@ class Heuristic_Forecaster(stf.Forecaster):
                 torch.ones_like(y_t).to(y_c.device) * y_c.mean(1, keepdim=True).detach()
             )
 
+        # hack to work with lightning optimization w/o learnable params
+        # (i'm sure there's a better way to do this...)
         output = output + 0.0 * self.at_least_one_param(torch.zeros(1).to(y_c.device))
 
         return (output,)

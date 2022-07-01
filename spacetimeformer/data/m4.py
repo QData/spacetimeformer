@@ -193,7 +193,7 @@ def pad_m4_collate(samples):
 if __name__ == "__main__":
     from spacetimeformer.data import DataModule
 
-    path = "/dccstor/tst03/m4"
+    path = "TODO"
     dm = DataModule(
         M4TorchDset,
         dataset_kwargs={
