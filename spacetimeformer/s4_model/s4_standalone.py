@@ -21,13 +21,9 @@ contract_expression = oe.contract_expression
 
 try:  # Try CUDA extension
     from extensions.cauchy.cauchy import cauchy_mult
-
     has_cauchy_extension = True
 except:
-    print(
-        "CUDA extension for cauchy multiplication not found. go to ./extensions/cauchy and try `python setup.py install`"
-    )
-    exit(1)
+    has_cauchy_extension = False
 
 
 def _broadcast_dims(*tensors):
@@ -42,10 +38,6 @@ def _broadcast_dims(*tensors):
 _c2r = torch.view_as_real
 _r2c = torch.view_as_complex
 _conj = lambda x: torch.cat([x, x.conj()], dim=-1)
-
-assert torch.__version__.startswith("1.10") or torch.__version__.startswith(
-    "1.11"
-), "Please Use PyTorch 1.10 or 1.11"
 
 _resolve_conj = lambda x: x.conj().resolve_conj()
 
@@ -360,7 +352,7 @@ def rank_correction(measure, N, rank=1, dtype=torch.float):
         P = torch.stack([P0, P1], dim=0)  # (2 N)
     elif measure == "lagt":
         assert rank >= 1
-        P = 0.5 ** 0.5 * torch.ones(1, N, dtype=dtype)
+        P = 0.5**0.5 * torch.ones(1, N, dtype=dtype)
     elif measure == "fourier":
         P = torch.ones(N, dtype=dtype)  # (N)
         P0 = P.clone()
@@ -825,9 +817,10 @@ class SSKernelNPLR(nn.Module):
         I = torch.eye(self.dA.size(-1)).to(dA_L)
         C = _conj(_r2c(self.C))  # (H C N)
 
-        dC = torch.linalg.solve(I - dA_L.transpose(-1, -2), C.unsqueeze(-1),).squeeze(
-            -1
-        )
+        dC = torch.linalg.solve(
+            I - dA_L.transpose(-1, -2),
+            C.unsqueeze(-1),
+        ).squeeze(-1)
         self.dC = dC
 
         # Do special preprocessing for different step modes
@@ -872,16 +865,22 @@ class SSKernelNPLR(nn.Module):
 
             if self._step_mode == "diagonal":
                 self.state_contraction = contract_expression(
-                    "h n, ... h n -> ... h n", (H, N), batch_shape + (H, N),
+                    "h n, ... h n -> ... h n",
+                    (H, N),
+                    batch_shape + (H, N),
                 )
             else:
                 # Dense (quadratic) case: expand all terms
                 self.state_contraction = contract_expression(
-                    "h m n, ... h n -> ... h m", (H, N, N), batch_shape + (H, N),
+                    "h m n, ... h n -> ... h m",
+                    (H, N, N),
+                    batch_shape + (H, N),
                 )
 
             self.input_contraction = contract_expression(
-                "h n, ... h -> ... h n", (H, N), batch_shape + (H,),  # self.dB.shape
+                "h n, ... h -> ... h n",
+                (H, N),
+                batch_shape + (H,),  # self.dB.shape
             )
 
         self.output_contraction = contract_expression(
@@ -1025,6 +1024,11 @@ class S4(nn.Module):
         Other options are all experimental and should not need to be configured
         """
 
+        if not has_cauchy_extension:
+            print(
+                "CUDA extension for cauchy multiplication not found. go to ./extensions/cauchy and try `python setup.py install`"
+            )
+            exit(1)
         super().__init__()
         self.h = d_model
         self.n = d_state

@@ -28,6 +28,7 @@ class S4_Forecaster(stf.Forecaster):
         l2_coeff: float = 0,
         loss: str = "mse",
         linear_window: int = 0,
+        use_revin: bool = False,
     ):
         super().__init__(
             d_x=d_x,
@@ -37,6 +38,7 @@ class S4_Forecaster(stf.Forecaster):
             learning_rate=learning_rate,
             loss=loss,
             linear_window=linear_window,
+            use_revin=use_revin,
         )
 
         self.t2v = stf.Time2Vec(input_dim=d_x, embed_dim=time_emb_dim * d_x)
