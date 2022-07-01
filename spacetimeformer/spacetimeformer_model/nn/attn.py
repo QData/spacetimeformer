@@ -1,10 +1,10 @@
+from math import sqrt, log
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 import numpy as np
 
-from math import sqrt, log
 from ..utils.masking import TriangularCausalMask, ProbMask
 
 
@@ -30,9 +30,12 @@ class FullAttention(nn.Module):
             if attn_mask is None:
                 attn_mask = TriangularCausalMask(B, L, device=queries.device)
 
-            scores.masked_fill_(attn_mask.mask, -np.inf)
+        if attn_mask is not None:
+            attn_mask = attn_mask.unsqueeze(1)  # expand heads dimension
+            scores.masked_fill_(attn_mask, -np.inf)
 
-        A = self.dropout(torch.softmax(scale * scores, dim=-1))
+        A = torch.nan_to_num(self.dropout(torch.softmax(scale * scores, dim=-1)))
+        # A = self.dropout(torch.softmax(scale * scores, dim=-1))
         V = torch.einsum("bhls,bshd->blhd", A, values)
 
         if output_attn:
@@ -184,153 +187,22 @@ class PerformerAttention(_FastAttention):
         return v.transpose(1, 2), None
 
 
-class BenchmarkAttention(nn.Module):
-    def __init__(self, *args, **kwargs):
-        super().__init__()
-
-    def forward(self, queries, keys, values, attn_mask, output_attn=False):
-        return queries, None
-        # return torch.zeros_like(queries), None
-
-
-from nystrom_attention import NystromAttention as _NystromAttention
-
-
-class NystromSelfAttention(nn.Module):
-    def __init__(
-        self,
-        d_model,
-        n_heads,
-        num_landmarks=256,
-        pinv_iterations=6,
-        attention_dropout=0.0,
-        residual=False,
-        residual_conv_kernel=33,
-        eps=1e-8,
-    ):
-        super().__init__()
-        self.attn = _NystromAttention(
-            dim=d_model,
-            dim_head=d_model // n_heads,
-            heads=n_heads,
-            num_landmarks=num_landmarks,
-            pinv_iterations=pinv_iterations,
-            residual=residual,
-            residual_conv_kernel=residual_conv_kernel,
-            dropout=attention_dropout,
-            eps=eps,
-        )
-
-    def forward(self, x, x_, x__, attn_mask=None, output_attn=False):
-        assert (x == x_).all()
-        assert (x_ == x__).all()
-        return self.attn(x), None
-
-
-class LocalAttentionLayer(nn.Module):
-    def __init__(
-        self,
-        attention,
-        d_y,
-        d_model,
-        n_heads,
-        dropout_qkv=0.0,
-    ):
-        super().__init__()
-
-        d_keys = d_model // n_heads
-        d_values = d_model // n_heads
-
-        self.inner_attention = attention()
-        self.query_projection = nn.Linear(d_model, d_keys * n_heads)
-        self.key_projection = nn.Linear(d_model, d_keys * n_heads)
-        self.value_projection = nn.Linear(d_model, d_values * n_heads)
-        self.out_projection = nn.Linear(d_values * n_heads, d_model)
-        self.dropout_qkv = nn.Dropout(dropout_qkv)
-        self.n_heads = n_heads
-        self.d_y = d_y
-
-    def forward(self, queries, keys, values, attn_mask=None, output_attn=False):
-        # out = self._iter_forward(queries, keys, values, attn_mask, output_attn)
-        out = self._parallel_forward(queries, keys, values, attn_mask, output_attn)
-        return out
-
-    def _iter_forward(self, queries, keys, values, attn_mask=None, output_attn=False):
-        H = self.n_heads
-        outs = []
-        for query, key, value in zip(
-            queries.chunk(self.d_y, dim=-2),
-            keys.chunk(self.d_y, dim=-2),
-            values.chunk(self.d_y, dim=-2),
-        ):
-            B, L, _ = query.shape
-            _, S, _ = key.shape
-
-            query = self.dropout_qkv(self.query_projection(query)).view(B, L, H, -1)
-            key = self.dropout_qkv(self.key_projection(key)).view(B, S, H, -1)
-            value = self.dropout_qkv(self.value_projection(value)).view(B, S, H, -1)
-
-            out, attn = self.inner_attention(
-                queries=query,
-                keys=key,
-                values=value,
-                attn_mask=attn_mask,
-                output_attn=False,
-            )
-
-            out = out.view(B, L, -1)
-            out = self.out_projection(out)
-            outs.append(out)
-        return torch.cat(outs, dim=-2), None
-
-    def _parallel_forward(
-        self, queries, keys, values, attn_mask=None, output_attn=False
-    ):
-        H = self.n_heads
-        main_B, *_ = queries.shape
-        queries = torch.cat(queries.chunk(self.d_y, dim=1), dim=0)
-        keys = torch.cat(keys.chunk(self.d_y, dim=1), dim=0)
-        values = torch.cat(values.chunk(self.d_y, dim=1), dim=0)
-        B, L, _ = queries.shape
-        _, S, _ = keys.shape
-        queries = self.dropout_qkv(self.query_projection(queries)).view(B, L, H, -1)
-        keys = self.dropout_qkv(self.key_projection(keys)).view(B, S, H, -1)
-        values = self.dropout_qkv(self.value_projection(values)).view(B, S, H, -1)
-
-        out, attn = self.inner_attention(
-            queries=queries,
-            keys=keys,
-            values=values,
-            attn_mask=attn_mask,
-            output_attn=False,
-        )
-        out = out.contiguous()
-        out = torch.cat(out.chunk(self.d_y, dim=0), dim=1).contiguous()
-        B, L, *_ = out.shape
-        out = out.view(B, L, -1)
-        out = self.out_projection(out).contiguous()
-        return out, None
-
-
 class AttentionLayer(nn.Module):
     def __init__(
         self,
         attention,
         d_model,
+        d_queries_keys,
+        d_values,
         n_heads,
         dropout_qkv=0.0,
-        d_keys=None,
-        d_values=None,
         mix=False,
     ):
         super(AttentionLayer, self).__init__()
 
-        d_keys = d_keys or (d_model // n_heads)
-        d_values = d_values or (d_model // n_heads)
-
         self.inner_attention = attention()
-        self.query_projection = nn.Linear(d_model, d_keys * n_heads)
-        self.key_projection = nn.Linear(d_model, d_keys * n_heads)
+        self.query_projection = nn.Linear(d_model, d_queries_keys * n_heads)
+        self.key_projection = nn.Linear(d_model, d_queries_keys * n_heads)
         self.value_projection = nn.Linear(d_model, d_values * n_heads)
         self.out_projection = nn.Linear(d_values * n_heads, d_model)
         self.dropout_qkv = nn.Dropout(dropout_qkv)
@@ -351,15 +223,10 @@ class AttentionLayer(nn.Module):
             keys=keys,
             values=values,
             attn_mask=attn_mask,
-            # warning: changed
-            output_attn=False,
+            output_attn=output_attn,
         )
 
-        if output_attn:
-            # This is a messy (and memory-intensive) approach that is only necessary for
-            # extracting attention matrices from Xformer methods that
-            # never explicitly compute them (e.g. Performer). It is inspired
-            # by a comment in the Performer appendix.
+        if output_attn and attn is None:
             onehot_values = (
                 torch.eye(S).unsqueeze(0).repeat(B, 1, 1).unsqueeze(2).to(values.device)
             )
