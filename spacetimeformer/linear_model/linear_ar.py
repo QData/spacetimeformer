@@ -46,7 +46,7 @@ class LinearModel(nn.Module):
         batch = inp.shape[0]
         if self.shared_weights:
             inp = rearrange(inp, "batch length dy -> (batch dy) length 1")
-        baseline = (self.weights * inp).sum(1) + self.bias
+        baseline = (self.weights * inp[:, -self.window :, :]).sum(1) + self.bias
         if self.shared_weights:
             baseline = rearrange(baseline, "(batch dy) 1 -> batch dy", batch=batch)
         return baseline
