@@ -14,11 +14,11 @@ We deal with multivariate sequence to sequence problems that have continuous inp
 
 ![](readme_media/data_setup.png)
 
-Every model and datset uses this `x_context`, `y_context`, `x_target`, `y_target` format. X values are time covariates like the calendar datetime, while Ys are variable values. There can be additional context variables that are not predicted. 
+Every model and dataset uses this `x_context`, `y_context`, `x_target`, `y_target` format. X values are time covariates like the calendar datetime, while Ys are variable values. There can be additional context variables that are not predicted. 
 
 
 ## Spatiotemporal Attention
-Typical deep learning time series models group Y values by timestep and learn patterns across time. When using Transformer-based models, this results in "temporal" attention networks that can ignore *spatial* relationships between variables.
+Typical deep learning time series models group Y values by timestep and learn patterns across time. When using Transformer-based models, this results in "*temporal*" attention networks that can ignore *spatial* relationships between variables.
 
 In contrast, Graph Neural Networks and similar methods model spatial relationships with explicit graphs - sharing information across space and time in alternating layers.
 
@@ -57,8 +57,8 @@ Commandline instructions for each experiment can be found using the format: ```p
 - `linear`: a basic autoregressive linear model. *New June 2022: expanded to allow for seasonal decomposition and independent params for each variable (inspired by [DLinear](https://arxiv.org/abs/2205.13504))*.
 - `lstnet`: a more typical RNN/Conv1D model for multivariate forecasting. Based on the attention-free implementation of [LSTNet](https://github.com/laiguokun/LSTNet).
 - `lstm`: a typical encoder-decoder LSTM without attention. We use scheduled sampling to anneal teacher forcing throughout training.
-- `mtgnn`: a hybrid GNN that learns its graph structure from data. For more information refer to the [paper](https://arxiv.org/abs/2005.11650). We use the implementation from [`pytorch_geometric_temporal`](https://github.com/benedekrozemberczki/pytorch_geometric_temporal)
-- `s4`: long-sequence state-space model ([paper](https://arxiv.org/abs/2111.00396)).
+- `mtgnn`: a hybrid GNN that learns its graph structure from data. For more information refer to the [paper](https://arxiv.org/abs/2005.11650). We use the implementation from [`pytorch_geometric_temporal`](https://github.com/benedekrozemberczki/pytorch_geometric_temporal) (*requires some extra installation*).
+- `s4`: long-sequence state-space model ([paper](https://arxiv.org/abs/2111.00396)) (*requires some extra installation*).
 - `heuristic`: simple heuristics like "repeat the last value in the context sequence" as a sanity-check.
 - `spacetimeformer`: the multivariate long-range transformer architecture discussed in our paper.
     - note that the "Temporal" ablation discussed in the paper is a special case of the `spacetimeformer` model. It is conceptually similar to [Informer](https://arxiv.org/abs/2012.07436). Set the `embed_method = temporal`. Spacetimeformer has many configurable options and we try to provide a thorough explanation with the commandline `-h` instructions.
@@ -108,7 +108,34 @@ There are several figures that can be saved to wandb between epochs. These vary 
 
 
 ## Example Training Commands
-Coming Soon...
+
+###### General Notes: 
+1. Commands are listed without GPU counts. For one GPU, add `--gpus 0`, three GPUs: `--gpus 0 1 2` etc. Some of these models require significant GPU memory (A100 80GBs). Other hyperparameter settings were used in older versions of the paper with more limited compute resources. If I have time I will try to update with competetive alternatives on smaller GPUs.
+
+2. Some datasets require a `--data_path` to the dataset location on disk. Others are included with the source code or downloaded automatically.
+
+Linear autoregressive model with independent weights and seasonal decomposotion (DLinear-style) on ETTm1:
+```bash
+python train.py linear ettm1 --context_points 288 --target_points 96 --run_name linear_ettm1_regression --gpus 0 --use_seasonal_decomp --linear_window 288 --data_path /path/to/ETTm1.csv
+```
+
+Spacetimeformer on Pems-Bay (MAE: ~1.61):
+```bash
+python train.py spacetimeformer pems-bay --batch_size 32 --warmup_steps 1000 --d_model 200 --d_ff 700 --enc_layers 5 --dec_layers 6 --dropout_emb .1 --dropout_ff .3 --run_name pems-bay-spatiotemporal --base_lr 1e-3 --l2_coeff 1e-3 --loss mae --data_path /path/to/pems_bay/ --d_qk 30 --d_v 30 --n_heads 10 --patience 10 --decay_factor .8
+```
+
+Spacetimeformer on MNIST completion:
+```bash
+python train.py spacetimeformer mnist --embed_method spatio-temporal --local_self_attn full --local_cross_attn full --global_self_attn full --global_cross_attn full --run_name mnist_spatiotemporal --context_points 10
+```
+![](readme_media/mnist_example.png)
+
+Spacetimeformer on AL Solar (MSE: ~7.75):
+```bash
+python train.py spacetimeformer solar_energy --context_points 168 --target_points 24 --d_model 100 --d_ff 400 --enc_layers 5 --dec_layers 5 --l2_coeff 1e-3 --dropout_ff .2 --dropout_emb .1 --d_qk 20 --d_v 20 --n_heads 6 --run_name spatiotemporal_al_solar --batch_size 32 --class_loss_imp 0 --initial_downsample_convs 1 --decay_factor .8 --warmup_steps 1000
+```
+
+More Coming Soon...
 
 ## Citation
 If you use this model in academic work please feel free to cite our paper
