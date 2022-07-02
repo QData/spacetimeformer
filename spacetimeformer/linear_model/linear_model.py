@@ -19,10 +19,10 @@ class Linear_Forecaster(stf.Forecaster):
         l2_coeff: float = 0,
         loss: str = "mse",
         linear_window: int = 0,
+        linear_shared_weights: bool = False,
+        use_revin: bool = False,
+        use_seasonal_decomp: bool = False,
     ):
-        assert (
-            d_yc == d_yt
-        ), "Linear Model requires the same number of context and target variables"
         super().__init__(
             d_x=d_x,
             d_yc=d_yc,
@@ -31,9 +31,14 @@ class Linear_Forecaster(stf.Forecaster):
             learning_rate=learning_rate,
             loss=loss,
             linear_window=linear_window,
+            linear_shared_weights=linear_shared_weights,
+            use_revin=use_revin,
+            use_seasonal_decomp=use_seasonal_decomp,
         )
 
-        self.model = LinearModel(context_points)
+        self.model = LinearModel(
+            context_points, shared_weights=linear_shared_weights, d_yt=d_yt
+        )
 
     @property
     def eval_step_forward_kwargs(self):
@@ -44,13 +49,8 @@ class Linear_Forecaster(stf.Forecaster):
         return {}
 
     def forward_model_pass(self, x_c, y_c, x_t, y_t):
-        pred_len = y_t.shape[-2]
-        output = torch.zeros_like(y_t).to(y_t.device)
-
-        for i in range(pred_len):
-            inp = torch.cat((y_c[:, i:], output[:, :i]), dim=-2)
-            output[:, i] = self.model.forward(inp).squeeze(1)
-
+        _, pred_len, d_yt = y_t.shape
+        output = self.model(y_c, pred_len=pred_len, d_yt=d_yt)
         return (output,)
 
     @classmethod

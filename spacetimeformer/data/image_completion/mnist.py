@@ -18,11 +18,11 @@ class MNISTDset(Dataset):
 
     def __getitem__(self, i):
         img, label = self.dset[i]
-        y = rearrange(img, "c h w -> (h w) c")
+        y = rearrange(img, "1 h w -> w h")
         y_c = y[: self.context_points]
         y_t = y[self.context_points :]
 
-        x = torch.arange(28 * 28).view(-1, 1).float() / (28 * 28)
+        x = torch.arange(28).view(-1, 1).float() / 28
         x_c = x[: self.context_points]
         x_t = x[self.context_points :]
 
@@ -30,4 +30,4 @@ class MNISTDset(Dataset):
 
     @classmethod
     def add_cli(self, parser):
-        parser.add_argument("--context_points", type=int, default=128)
+        parser.add_argument("--context_points", type=int, default=20)

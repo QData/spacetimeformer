@@ -55,9 +55,9 @@ class ReduceLROnPlateauScheduler(LearningRateScheduler):
         self._old_val_loss = None
 
     def step(self, val_loss: float):
+        val_loss = val_loss.mean()
         if self.val_loss < val_loss:
             self.count += 1
-            self.val_loss = val_loss
         else:
             self.count = 0
             self.val_loss = val_loss

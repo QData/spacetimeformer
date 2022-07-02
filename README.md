@@ -1,13 +1,44 @@
 # Spacetimeformer Multivariate Forecasting
 
-This repository contains the code for the paper, "**Long-Range Transformers for Dynamic Spatiotemporal Forecasting**", Grigsby, Wang and Qi, 2021. ([arXiv](https://arxiv.org/abs/2109.12218))
+This repository contains the code for the paper, "**Long-Range Transformers for Dynamic Spatiotemporal Forecasting**", Grigsby, Wang and Qi, 2021. ([arXiv](https://arxiv.org/abs/2109.12218)). 
 
-![spatiotemporal_embedding](readme_media/st-graph.png)
+**Spacetimeformer** is a Transformer that learns temporal patterns like a time series model and spatial patterns like a Graph Neural Network.
 
-Transformers are a high-performance approach to sequence-to-sequence timeseries forecasting. However, stacking multiple sequences into each token only allows the model to learn *temporal* relationships across time. This can ignore important *spatial* relationships between variables. Our model (nickamed "Spacetimeformer") flattens multivariate timeseries into extended sequences where each token represents the value of one variable at a given timestep. Long-Range Transformers can then learn relationships over both time and space. For much more information, please refer to our paper.
 
-## Installation 
-This repository was written and tested for **python 3.8** and **pytorch 1.9.0**.
+**June 2022 disclaimer: the updated implementation no longer matches the arXiv pre-prints. We are working on a new version of the paper. GitHub releases mark the paper versions.**
+
+Below we give a brief explanation of the problem and method with installation instructions. We provide training commands for high-performance results on several datasets.
+
+## Data Format
+We deal with multivariate sequence to sequence problems that have continuous inputs. The most common example is time series forecasting where we make predictions at future ("target") values given recent history ("context"):
+
+![](readme_media/data_setup.png)
+
+Every model and dataset uses this `x_context`, `y_context`, `x_target`, `y_target` format. X values are time covariates like the calendar datetime, while Ys are variable values. There can be additional context variables that are not predicted. 
+
+
+## Spatiotemporal Attention
+Typical deep learning time series models group Y values by timestep and learn patterns across time. When using Transformer-based models, this results in "*temporal*" attention networks that can ignore *spatial* relationships between variables.
+
+In contrast, Graph Neural Networks and similar methods model spatial relationships with explicit graphs - sharing information across space and time in alternating layers.
+
+Spactimeformer learns full spatiotemporal patterns between all varibles at every timestep.
+
+![](readme_media/attention_comparison.png)
+
+We implement spatiotemporal attention with a custom Transformer architecture and embedding that flattens multivariate sequences so that each token contains the value of a single variable at a given timestep:
+
+![](readme_media/spatiotemporal_sequence.png)
+
+Spacetimeformer processes these longer sequences with a mix of efficient attention mechanisms and Vision-style "windowed" attention.
+
+![](readme_media/spacetimeformer_arch.png)
+
+This repo contains the code for our model as well as several high-quality baselines for common benchmarks and toy datasets.
+
+
+## Installation and Training
+This repository was written and tested for **python 3.8** and **pytorch 1.11.0**.
 
 ```bash
 git clone https://github.com/QData/spacetimeformer.git
@@ -19,37 +50,49 @@ pip install -e .
 ```
 This installs a python package called ``spacetimeformer``.
 
-## Dataset Setup
-CSV datsets like AL Solar, NY-TX Weather, Exchange Rates, and the Toy example are included with the source code of this repo. 
-
-Larger datasets should be downloaded and their folders placed in the `data/` directory. You can find them with this [google drive link](https://drive.google.com/drive/folders/1NcCIjuWbkvAi1MZUpYBIr7eYhaowvU7B?usp=sharing). Note that the `metr-la` and `pems-bay` data is directly from [this repo](https://github.com/liyaguang/DCRNN) - all we've done is skip a step for you and provide the raw train, val, test, `*.npz` files our dataset code expects.
-
-
-## Recreating Experiments with Our Training Script
-The main training functionality for `spacetimeformer` and most baselines considered in the paper can be found in the `train.py` script. The training loop is based on the [`pytorch_lightning`](https://pytorch-lightning.rtfd.io/en/latest/) framework.
 
 Commandline instructions for each experiment can be found using the format: ```python train.py *model* *dataset* -h```. 
 
-Model Names:
-- `linear`: a basic autoregressive linear model.
+#### Models
+- `linear`: a basic autoregressive linear model. *New June 2022: expanded to allow for seasonal decomposition and independent params for each variable (inspired by [DLinear](https://arxiv.org/abs/2205.13504))*.
 - `lstnet`: a more typical RNN/Conv1D model for multivariate forecasting. Based on the attention-free implementation of [LSTNet](https://github.com/laiguokun/LSTNet).
 - `lstm`: a typical encoder-decoder LSTM without attention. We use scheduled sampling to anneal teacher forcing throughout training.
-- `mtgnn`: a hybrid GNN that learns its graph structure from data. For more information refer to the [paper](https://arxiv.org/abs/2005.11650). We use the implementation from [`pytorch_geometric_temporal`](https://github.com/benedekrozemberczki/pytorch_geometric_temporal)
+- `mtgnn`: a hybrid GNN that learns its graph structure from data. For more information refer to the [paper](https://arxiv.org/abs/2005.11650). We use the implementation from [`pytorch_geometric_temporal`](https://github.com/benedekrozemberczki/pytorch_geometric_temporal) (*requires some extra installation*).
+- `s4`: long-sequence state-space model ([paper](https://arxiv.org/abs/2111.00396)) (*requires some extra installation*).
+- `heuristic`: simple heuristics like "repeat the last value in the context sequence" as a sanity-check.
 - `spacetimeformer`: the multivariate long-range transformer architecture discussed in our paper.
-    - note that the "Temporal" ablation discussed in the paper is a special case of the `spacetimeformer` model. Set the `embed_method = temporal`. Spacetimeformer has many configurable options and we try to provide a thorough explanation with the commandline `-h` instructions.
+    - note that the "Temporal" ablation discussed in the paper is a special case of the `spacetimeformer` model. It is conceptually similar to [Informer](https://arxiv.org/abs/2012.07436). Set the `embed_method = temporal`. Spacetimeformer has many configurable options and we try to provide a thorough explanation with the commandline `-h` instructions.
 
 
-Dataset Names:
+#### Datasets
+
+###### Spatial Forecasting
 - `metr-la` and `pems-bay`: traffic forecasting datasets. We use a very similar setup to [DCRNN](https://github.com/liyaguang/DCRNN).
-- `toy2`: is the toy dataset mentioned at the beginning of our experiments section. It is heavily based on the toy dataset in [TPA-LSTM](https://arxiv.org/abs/1809.04206.).
-- `asos`: Is the codebase's name for what the paper calls "NY-TX Weather."
-- `solar_energy`: Is the codebase's name for what is more commonly called "AL Solar."
-- `exchange`: A dataset of exchange rates. Spacetimeformer performs relatively well but this is tiny dataset of highly non-stationary data where `linear` is already a SOTA model.
-- `precip`: A challenging spatial message-passing task that we have not yet been able to solve. We collected daily precipitation data from a latitude-longitude grid over the Continental United States. The multivariate sequences are sampled from a ringed "radar" configuration as shown below in green. We expand the size of the dataset by randomly moving this radar around the country.
+- `precip`: daily precipitation data from a latitude-longitude grid over the Continental United States. 
 
-<p align="center">
-<img src="readme_media/radar_edit.png" width="220">
-</p>
+###### Time Series Forecasting
+- `toy2`: is the toy dataset mentioned at the beginning of our experiments section. It is heavily based on the toy dataset in [TPA-LSTM](https://arxiv.org/abs/1809.04206.).
+- `asos`: is the codebase's name for what the paper calls "NY-TX Weather."
+- `solar_energy`: Is the codebase's name for the time series benchmark more commonly called "AL Solar."
+- `exchange`: A common time series benchmark dataset of exchange rates.
+- `weather`: A common time series benchmark dataset of 21 weather indiciators.
+- `ettm1`: A common time series benchmark dataset of "electricity transformer temperatures" and related variables.
+
+###### Image Completion
+- `mnist`: Highlights the similarity between multivariate forecasting and vision models by completing the right side of an MNIST digit given the left side, where each row is a different variable.
+- `cifar`: A harder image completion task where the variables are color channels and the sequence is flattened across rows.
+
+###### Copy Tasks
+- `copy`: Copy binary input sequences with rows shifted by varying amounts. An example of a hard task for Temporal attention that is easy for Spatiotemporal attention.
+- `cont_copy`: A continuous version of the copy task with additional settings to study distribution shift.
+
+###### "Global" or Multiseries Datasets
+
+- `m4`: The M4 competition dataset ([overview](https://www.sciencedirect.com/science/article/pii/S0169207019301128)). Collection of 100k univariate series at various resolutions.
+- `wiki`: The Wikipedia web traffic dataset from the [Kaggle competition](https://www.kaggle.com/c/web-traffic-time-series-forecasting). 145k univariate high-entropy series at a single resolution.
+- `monash`: Loads the [Monash Time Series Forecasting Archive](https://arxiv.org/abs/2105.06643). Up to ~400k time univariate timeseries.
+
+    *(We load these benchmarks in an unusual format where the context sequence is *all data up until the current time* - leading to variable length sequences with padding.)*
 
 ### Logging with Weights and Biases
 We used [wandb](https://wandb.ai/home) to track all of results during development, and you can do the same by providing your username and project as environment variables:
@@ -61,42 +104,38 @@ export STF_LOG_DIR="/somewhere/with/more/disk/space"
 ```
 wandb logging can then be enabled with the `--wandb` flag.
 
-There are two automated figures that can be saved to wandb between epochs. These include the attention diagrams (e.g., Figure 4 of our paper) and prediction plots (e.g., Figure 6 of our paper). Enable attention diagrams with `--attn_plot` and prediction curves with `--plot`.
+There are several figures that can be saved to wandb between epochs. These vary by dataset but can be enabled with `--attn_plot` (for Transformer attention diagrams) and `--plot` (for prediction plotting and image completion).
 
-### Example Spacetimeformer Training Commands
-Toy Dataset
+
+## Example Training Commands
+
+###### General Notes: 
+1. Commands are listed without GPU counts. For one GPU, add `--gpus 0`, three GPUs: `--gpus 0 1 2` etc. Some of these models require significant GPU memory (A100 80GBs). Other hyperparameter settings were used in older versions of the paper with more limited compute resources. If I have time I will try to update with competetive alternatives on smaller GPUs.
+
+2. Some datasets require a `--data_path` to the dataset location on disk. Others are included with the source code or downloaded automatically.
+
+Linear autoregressive model with independent weights and seasonal decomposotion (DLinear-style) on ETTm1:
 ```bash
-python train.py spacetimeformer toy2 --run_name spatiotemporal_toy2 \
---d_model 100 --d_ff 400 --enc_layers 4 --dec_layers 4 \
---gpus 0 1 2 3 --batch_size 32 --start_token_len 4 --n_heads 4 \
---grad_clip_norm 1 --early_stopping --trials 1
+python train.py linear ettm1 --context_points 288 --target_points 96 --run_name linear_ettm1_regression --gpus 0 --use_seasonal_decomp --linear_window 288 --data_path /path/to/ETTm1.csv
 ```
 
-Metr-LA
+Spacetimeformer on Pems-Bay (MAE: ~1.61):
 ```bash
-python train.py spacetimeformer metr-la --start_token_len 3 --batch_size 32 \
---gpus 0 1 2 3 --grad_clip_norm 1 --d_model 128 --d_ff 512 --enc_layers 5 \
---dec_layers 4 --dropout_emb .3 --dropout_ff .3 --dropout_qkv 0 \ 
---run_name spatiotemporal_metr-la --base_lr 1e-3 --l2_coeff 1e-2 \
+python train.py spacetimeformer pems-bay --batch_size 32 --warmup_steps 1000 --d_model 200 --d_ff 700 --enc_layers 5 --dec_layers 6 --dropout_emb .1 --dropout_ff .3 --run_name pems-bay-spatiotemporal --base_lr 1e-3 --l2_coeff 1e-3 --loss mae --data_path /path/to/pems_bay/ --d_qk 30 --d_v 30 --n_heads 10 --patience 10 --decay_factor .8
 ```
 
-Temporal Attention Ablation with Negative Log Likelihood Loss on NY-TX Weather ("asos") with WandB Logging and Figures
+Spacetimeformer on MNIST completion:
 ```bash
-python train.py spacetimeformer asos --context_points 160 --target_points 40 \ 
---start_token_len 8 --grad_clip_norm 1 --gpus 0 --batch_size 128 \ 
---d_model 200 --d_ff 800 --enc_layers 3 --dec_layers 3 \
---local_self_attn none --local_cross_attn none --l2_coeff .01 \
---dropout_emb .1 --run_name temporal_asos_160-40-nll --loss nll \
---time_resolution 1 --dropout_ff .2 --n_heads 8 --trials 3 \ 
---embed_method temporal --early_stopping --wandb --attn_plot --plot
+python train.py spacetimeformer mnist --embed_method spatio-temporal --local_self_attn full --local_cross_attn full --global_self_attn full --global_cross_attn full --run_name mnist_spatiotemporal --context_points 10
+```
+![](readme_media/mnist_example.png)
+
+Spacetimeformer on AL Solar (MSE: ~7.75):
+```bash
+python train.py spacetimeformer solar_energy --context_points 168 --target_points 24 --d_model 100 --d_ff 400 --enc_layers 5 --dec_layers 5 --l2_coeff 1e-3 --dropout_ff .2 --dropout_emb .1 --d_qk 20 --d_v 20 --n_heads 6 --run_name spatiotemporal_al_solar --batch_size 32 --class_loss_imp 0 --initial_downsample_convs 1 --decay_factor .8 --warmup_steps 1000
 ```
 
-
-
-
-## Using Spacetimeformer in Other Applications
-If you want to use our model in the context of other datasets or training loops, you will probably want to go a step lower than the `spacetimeformer_model.Spacetimeformer_Forecaster` pytorch-lightning wrapper. Please see `spacetimeformer_model.nn.Spacetimeformer`.
-![arch-fig](readme_media/arch.png)
+More Coming Soon...
 
 ## Citation
 If you use this model in academic work please feel free to cite our paper
@@ -111,25 +150,3 @@ If you use this model in academic work please feel free to cite our paper
       primaryClass={cs.LG}
 }
 ```
-
-![st-embed-fig](readme_media/embed.png)
-
-## Roadmap, V2 Plans
-
-We are working on a second version of the paper, where we plan to focus on adjustments that make it easier to work with real-world datasets:
-- [ ] Missing data in the encoder sequence (instead of only ignoring the loss values in the decoder)
-- [ ] Multivariate datasets with variables sampled at different time intervals
-- [ ] Additional encoder sequence features beyond the target variables
-
-If you have other suggestions, please feel free to file an issue or email the authors!
-
-
-
-
-
-
-
-
-
-
-

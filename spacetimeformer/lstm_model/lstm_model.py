@@ -116,6 +116,9 @@ class LSTM_Forecaster(stf.Forecaster):
         l2_coeff: float = 0,
         loss: str = "mse",
         linear_window: int = 0,
+        linear_shared_weights: bool = False,
+        use_revin: bool = False,
+        use_seasonal_decomp: bool = False,
     ):
         super().__init__(
             d_x=d_x,
@@ -125,6 +128,9 @@ class LSTM_Forecaster(stf.Forecaster):
             learning_rate=learning_rate,
             loss=loss,
             linear_window=linear_window,
+            use_revin=use_revin,
+            use_seasonal_decomp=use_seasonal_decomp,
+            linear_shared_weights=linear_shared_weights,
         )
         self.t2v = stf.Time2Vec(input_dim=d_x, embed_dim=time_emb_dim * d_x)
 
@@ -157,6 +163,11 @@ class LSTM_Forecaster(stf.Forecaster):
 
     def forward_model_pass(self, x_c, y_c, x_t, y_t, force=None):
         assert force is not None
+        with torch.no_grad():
+            # need to normalize y_t in LSTM because it is sometimes used
+            # as input (teacher forcing). important to not leak the target
+            # stats (update_stats = False).
+            y_t = self.revin(y_t, mode="norm", update_stats=False)
         preds = self.model.forward(x_c, y_c, x_t, y_t, teacher_forcing_prob=force)
         return (preds,)
 

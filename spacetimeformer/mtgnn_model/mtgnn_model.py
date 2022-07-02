@@ -51,6 +51,9 @@ class MTGNN_Forecaster(stf.Forecaster):
         time_emb_dim: int = 0,
         loss: str = "mae",
         linear_window: int = 0,
+        linear_shared_weights: bool = False,
+        use_revin: bool = False,
+        use_seasonal_decomp: bool = False,
     ):
         assert (
             d_yc == d_yt
@@ -63,6 +66,9 @@ class MTGNN_Forecaster(stf.Forecaster):
             learning_rate=learning_rate,
             loss=loss,
             linear_window=linear_window,
+            linear_shared_weights=linear_shared_weights,
+            use_revin=use_revin,
+            use_seasonal_decomp=use_seasonal_decomp,
         )
         subgraph_size = min(subgraph_size, d_yt)
         self.learning_rate = learning_rate

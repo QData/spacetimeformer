@@ -12,6 +12,8 @@ from sklearn.preprocessing import StandardScaler
 
 import spacetimeformer as stf
 
+import matplotlib.pyplot as plt
+
 
 class CSVTimeSeries:
     def __init__(
@@ -20,10 +22,13 @@ class CSVTimeSeries:
         raw_df: pd.DataFrame = None,
         target_cols: List[str] = [],
         ignore_cols: List[str] = [],
+        remove_target_from_context_cols: List[str] = [],
         time_col_name: str = "Datetime",
         read_csv_kwargs={},
         val_split: float = 0.15,
         test_split: float = 0.15,
+        normalize: bool = True,
+        drop_all_nan: bool = False,
         time_features: List[str] = [
             "year",
             "month",
@@ -44,8 +49,15 @@ class CSVTimeSeries:
                 **read_csv_kwargs,
             )
 
+        if drop_all_nan:
+            raw_df.dropna(axis=0, how="any", inplace=True)
+
         self.time_col_name = time_col_name
         assert self.time_col_name in raw_df.columns
+
+        if not target_cols:
+            target_cols = raw_df.columns.tolist()
+            target_cols.remove(time_col_name)
 
         if ignore_cols:
             if ignore_cols == "all":
@@ -55,7 +67,10 @@ class CSVTimeSeries:
 
         time_df = pd.to_datetime(raw_df[self.time_col_name], format="%Y-%m-%d %H:%M")
         df = stf.data.timefeatures.time_features(
-            time_df, raw_df, use_features=time_features
+            time_df,
+            raw_df,
+            time_col_name=self.time_col_name,
+            use_features=time_features,
         )
         self.time_cols = df.columns.difference(raw_df.columns)
 
@@ -73,7 +88,7 @@ class CSVTimeSeries:
                 ] = cond
             return mask
 
-        test_cutoff = len(time_df) - round(test_split * len(time_df))
+        test_cutoff = len(time_df) - max(round(test_split * len(time_df)), 1)
         val_cutoff = test_cutoff - round(val_split * len(time_df))
 
         val_interval_low = time_df.iloc[val_cutoff]
@@ -99,16 +114,45 @@ class CSVTimeSeries:
         self._scaler = StandardScaler()
 
         self.target_cols = target_cols
+        for col in remove_target_from_context_cols:
+            assert (
+                col in self.target_cols
+            ), "`remove_target_from_context_cols` should be target cols that you want to remove from the context"
+
+        self.remove_target_from_context_cols = remove_target_from_context_cols
         not_exo_cols = self.time_cols.tolist() + target_cols
         self.exo_cols = df.columns.difference(not_exo_cols).tolist()
         self.exo_cols.remove(self.time_col_name)
 
-        self._scaler = self._scaler.fit(
-            self._train_data[target_cols + self.exo_cols].values
-        )
-        self._train_data = self.apply_scaling_df(df[train_mask])
-        self._val_data = self.apply_scaling_df(df[val_mask])
-        self._test_data = self.apply_scaling_df(df[test_mask])
+        self._train_data = df[train_mask]
+        self._val_data = df[val_mask]
+        if test_split == 0.0:
+            print("`test_split` set to 0. Using Val set as Test set.")
+            self._test_data = df[val_mask]
+        else:
+            self._test_data = df[test_mask]
+
+        self.normalize = normalize
+        if normalize:
+            self._scaler = self._scaler.fit(
+                self._train_data[target_cols + self.exo_cols].values
+            )
+        self._train_data = self.apply_scaling_df(self._train_data)
+        self._val_data = self.apply_scaling_df(self._val_data)
+        self._test_data = self.apply_scaling_df(self._test_data)
+
+    def make_hists(self):
+        for col in self.target_cols + self.exo_cols:
+            train = self._train_data[col]
+            test = self._test_data[col]
+            bins = np.linspace(-5, 5, 80)  # warning: edit bucket limits
+            plt.hist(train, bins, alpha=0.5, label="Train", density=True)
+            plt.hist(test, bins, alpha=0.5, label="Test", density=True)
+            plt.legend(loc="upper right")
+            plt.title(col)
+            plt.tight_layout()
+            plt.savefig(f"{col}-hist.png")
+            plt.clf()
 
     def get_slice(self, split, start, stop, skip):
         assert split in ["train", "val", "test"]
@@ -120,12 +164,15 @@ class CSVTimeSeries:
             return self.test_data.iloc[start:stop:skip]
 
     def apply_scaling(self, array):
+        if not self.normalize:
+            return array
         dim = array.shape[-1]
         return (array - self._scaler.mean_[:dim]) / self._scaler.scale_[:dim]
 
     def apply_scaling_df(self, df):
+        if not self.normalize:
+            return df
         scaled = df.copy(deep=True)
-        # scaled[self.target_cols] = self._scaler.transform(df[self.target_cols].values)
         cols = self.target_cols + self.exo_cols
         dtype = df[cols].values.dtype
         scaled[cols] = (
@@ -134,8 +181,9 @@ class CSVTimeSeries:
         return scaled
 
     def reverse_scaling_df(self, df):
+        if not self.normalize:
+            return df
         scaled = df.copy(deep=True)
-        # scaled[self.target_cols] = self._scaler.inverse_transform(df[self.target_cols].values)
         cols = self.target_cols + self.exo_cols
         dtype = df[cols].values.dtype
         scaled[cols] = (
@@ -144,12 +192,13 @@ class CSVTimeSeries:
         return scaled
 
     def reverse_scaling(self, array):
+        if not self.normalize:
+            return array
         # self._scaler is fit for target_cols + exo_cols
         # if the array dim is less than this length we start
         # slicing from the target cols
         dim = array.shape[-1]
         return (array * self._scaler.scale_[:dim]) + self._scaler.mean_[:dim]
-        # return self._scaler.inverse_transform(array)
 
     @property
     def train_data(self):
@@ -200,8 +249,6 @@ class CSVTorchDset(Dataset):
                 + 1,
             )
         ]
-        random.shuffle(self._slice_start_points)
-        self._slice_start_points = self._slice_start_points
 
     def __len__(self):
         return len(self._slice_start_points)
@@ -226,7 +273,10 @@ class CSVTorchDset(Dataset):
 
         ctxt_x = ctxt_slice[self.series.time_cols]
         trgt_x = trgt_slice[self.series.time_cols]
+
         ctxt_y = ctxt_slice[self.series.target_cols + self.series.exo_cols]
+        ctxt_y = ctxt_y.drop(columns=self.series.remove_target_from_context_cols)
+
         trgt_y = trgt_slice[self.series.target_cols]
 
         return self._torch(ctxt_x, ctxt_y, trgt_x, trgt_y)
@@ -250,16 +300,3 @@ class CSVTorchDset(Dataset):
             type=int,
             default=1,
         )
-
-
-if __name__ == "__main__":
-    test = CSVTimeSeries(
-        "/p/qdatatext/jcg6dn/asos/temperature-v1.csv",
-        ["ABI", "AMA", "ACT", "ALB", "JFK", "LGA"],
-    )
-    breakpoint()
-    dset = CSVTorchDset(test)
-    base = dset[0][0]
-    for i in range(len(dset)):
-        assert base.shape == dset[i][0].shape
-    breakpoint()

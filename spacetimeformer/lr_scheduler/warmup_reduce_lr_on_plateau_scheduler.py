@@ -85,12 +85,12 @@ class WarmupReduceLROnPlateauScheduler(LearningRateScheduler, ReduceLROnPlateau)
         else:
             return 1, None
 
-    def step(self, val_loss: Optional[float] = None):
+    def step(self, val_loss: Optional[float] = None, is_end_epoch=False):
         stage, steps_in_stage = self._decide_stage()
 
         if stage == 0:
             self.schedulers[0].step()
-        elif stage == 1:
+        elif stage == 1 and is_end_epoch:
             self.schedulers[1].step(val_loss)
 
         self.update_steps += 1

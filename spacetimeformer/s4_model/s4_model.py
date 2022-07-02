@@ -28,6 +28,9 @@ class S4_Forecaster(stf.Forecaster):
         l2_coeff: float = 0,
         loss: str = "mse",
         linear_window: int = 0,
+        linear_shared_weights: bool = False,
+        use_revin: bool = False,
+        use_seasonal_decomp: bool = False,
     ):
         super().__init__(
             d_x=d_x,
@@ -37,6 +40,9 @@ class S4_Forecaster(stf.Forecaster):
             learning_rate=learning_rate,
             loss=loss,
             linear_window=linear_window,
+            linear_shared_weights=linear_shared_weights,
+            use_revin=use_revin,
+            use_seasonal_decomp=use_seasonal_decomp,
         )
 
         self.t2v = stf.Time2Vec(input_dim=d_x, embed_dim=time_emb_dim * d_x)
