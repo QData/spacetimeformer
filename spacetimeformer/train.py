@@ -30,6 +30,7 @@ _DSETS = [
     "ettm1",
     "weather",
     "monash",
+    "hangzhou",
 ]
 
 
@@ -69,6 +70,8 @@ def create_parser():
         stf.data.wiki.WikipediaTorchDset.add_cli(parser)
     elif dset == "monash":
         stf.data.monash.MonashDset.add_cli(parser)
+    elif dset == "hangzhou":
+        stf.data.metro.MetroData.add_cli(parser)
     else:
         stf.data.CSVTimeSeries.add_cli(parser)
         stf.data.CSVTorchDset.add_cli(parser)
@@ -180,6 +183,10 @@ def create_model(config):
         x_dim = 3
         yc_dim = 21
         yt_dim = 21
+    elif config.dset == "hangzhou":
+        x_dim = 4
+        yc_dim = 160
+        yt_dim = 160
     assert x_dim is not None
     assert yc_dim is not None
     assert yt_dim is not None
@@ -384,6 +391,19 @@ def create_dset(config):
         data = stf.data.metr_la.METR_LA_Data(config.data_path)
         DATA_MODULE = stf.data.DataModule(
             datasetCls=stf.data.metr_la.METR_LA_Torch,
+            dataset_kwargs={"data": data},
+            batch_size=config.batch_size,
+            workers=config.workers,
+            overfit=args.overfit,
+        )
+        INV_SCALER = data.inverse_scale
+        SCALER = data.scale
+        NULL_VAL = 0.0
+
+    elif config.dset == "hangzhou":
+        data = stf.data.metro.MetroData(config.data_path)
+        DATA_MODULE = stf.data.DataModule(
+            datasetCls=stf.data.metro.MetroTorch,
             dataset_kwargs={"data": data},
             batch_size=config.batch_size,
             workers=config.workers,
