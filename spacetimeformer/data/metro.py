@@ -90,11 +90,3 @@ def MetroTorch(data: MetroData, split: str):
         tensors = data.test_data
     tensors = [torch.from_numpy(x).float() for x in tensors]
     return TensorDataset(*tensors)
-
-
-if __name__ == "__main__":
-    data = Metro_Data(
-        path="/p/qdatatext/jcg6dn/spacetimeformer_ibm/tst03/datasets/hangzhou/"
-    )
-    dset = Metro_Torch(data=data, split="train")
-    breakpoint()

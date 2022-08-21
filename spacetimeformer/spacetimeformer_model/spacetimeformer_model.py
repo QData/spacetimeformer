@@ -191,9 +191,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         *_, y_t = batch
 
         # compute prediction accuracy stats for logging
-        stats = self._compute_stats(
-            forecast_mask * forecast_out, forecast_mask * torch.nan_to_num(y_t)
-        )
+        stats = self._compute_stats(forecast_out, y_t, forecast_mask)
 
         stats["forecast_loss"] = loss_dict["forecast_loss"]
         stats["class_loss"] = loss_dict["class_loss"]
@@ -325,7 +323,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
             init_lr=self.init_lr,
             peak_lr=self.base_lr,
             warmup_steps=self.warmup_steps,
-            patience=2,
+            patience=3,
             factor=self.decay_factor,
         )
         return [self.optimizer], [self.scheduler]

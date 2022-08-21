@@ -212,19 +212,24 @@ class Forecaster(pl.LightningModule, ABC):
             return (output,) + tuple(extra)
         return (output,)
 
-    def _compute_stats(self, pred: torch.Tensor, true: torch.Tensor):
+    def _compute_stats(
+        self, pred: torch.Tensor, true: torch.Tensor, mask: torch.Tensor
+    ):
+        pred = pred * mask
+        true = torch.nan_to_num(true) * mask
+
+        adj = mask.mean().cpu().numpy() + 1e-5
         pred = pred.detach().cpu().numpy()
         true = true.detach().cpu().numpy()
         scaled_pred = self._inv_scaler(pred)
         scaled_true = self._inv_scaler(true)
         stats = {
-            "mape": stf.eval_stats.mape(scaled_true, scaled_pred),
-            "mae": stf.eval_stats.mae(scaled_true, scaled_pred),
-            "mse": stf.eval_stats.mse(scaled_true, scaled_pred),
-            "rse": stf.eval_stats.rrse(scaled_true, scaled_pred),
-            "smape": stf.eval_stats.smape(scaled_true, scaled_pred),
-            "norm_mae": stf.eval_stats.mae(true, pred),
-            "norm_mse": stf.eval_stats.mse(true, pred),
+            "mape": stf.eval_stats.mape(scaled_true, scaled_pred) / adj,
+            "mae": stf.eval_stats.mae(scaled_true, scaled_pred) / adj,
+            "mse": stf.eval_stats.mse(scaled_true, scaled_pred) / adj,
+            "smape": stf.eval_stats.smape(scaled_true, scaled_pred) / adj,
+            "norm_mae": stf.eval_stats.mae(true, pred) / adj,
+            "norm_mse": stf.eval_stats.mse(true, pred) / adj,
         }
         return stats
 
@@ -240,7 +245,7 @@ class Forecaster(pl.LightningModule, ABC):
             forward_kwargs=kwargs,
         )
         *_, y_t = batch
-        stats = self._compute_stats(mask * output, mask * torch.nan_to_num(y_t))
+        stats = self._compute_stats(output, y_t, mask)
         stats["loss"] = loss
         return stats
 
