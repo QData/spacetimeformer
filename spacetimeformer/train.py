@@ -31,6 +31,7 @@ _DSETS = [
     "weather",
     "monash",
     "hangzhou",
+    "traffic",
 ]
 
 
@@ -187,6 +188,10 @@ def create_model(config):
         x_dim = 4
         yc_dim = 160
         yt_dim = 160
+    elif config.dset == "traffic":
+        x_dim = 2
+        yc_dim = 862
+        yt_dim = 862
     assert x_dim is not None
     assert yc_dim is not None
     assert yt_dim is not None
@@ -604,7 +609,9 @@ def create_dset(config):
         PLOT_VAR_NAMES = ["OT", "p (mbar)", "raining (s)"]
         PLOT_VAR_IDXS = [20, 0, 15]
     else:
+        time_col_name = "Datetime"
         data_path = config.data_path
+        time_features = ["year", "month", "day", "weekday", "hour", "minute"]
         if config.dset == "asos":
             if data_path == "auto":
                 data_path = "./data/temperature-v1.csv"
@@ -633,10 +640,21 @@ def create_dset(config):
                 "New Zealand",
                 "Singapore",
             ]
+        elif config.dset == "traffic":
+            if data_path == "auto":
+                data_path = "./data/traffic.csv"
+            target_cols = [f"Lane {i}" for i in range(862)]
+            time_col_name = "FakeTime"
+            time_features = ["month", "day"]
+
         dset = stf.data.CSVTimeSeries(
             data_path=data_path,
             target_cols=target_cols,
             ignore_cols="all",
+            time_col_name=time_col_name,
+            time_features=time_features,
+            val_split=0.2,
+            test_split=0.2,
         )
         DATA_MODULE = stf.data.DataModule(
             datasetCls=stf.data.CSVTorchDset,

@@ -9,7 +9,7 @@ python-dateutil>=2.8.0
 performer-pytorch
 tqdm>=4.36.1
 nystrom-attention
-pytorch-lightning
+pytorch-lightning==1.6
 netCDF4
 scikit-learn
 omegaconf
@@ -17,3 +17,6 @@ seaborn
 opencv-python
 wandb
 einops
+chardet
+opt_einsum
+torchmetrics==0.5.1
