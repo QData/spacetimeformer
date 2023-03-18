@@ -1,13 +1,12 @@
 # Spacetimeformer Multivariate Forecasting
 
-This repository contains the code for the paper, "**Long-Range Transformers for Dynamic Spatiotemporal Forecasting**", Grigsby, Wang and Qi, 2021. ([arXiv](https://arxiv.org/abs/2109.12218)). 
+This repository contains the code for the paper, "**Long-Range Transformers for Dynamic Spatiotemporal Forecasting**", Grigsby et al., 2021. ([arXiv](https://arxiv.org/abs/2109.12218)). 
 
 **Spacetimeformer** is a Transformer that learns temporal patterns like a time series model and spatial patterns like a Graph Neural Network.
 
-
-**June 2022 disclaimer: the updated implementation no longer matches the arXiv pre-prints. We are working on a new version of the paper. GitHub releases mark the paper versions.**
-
 Below we give a brief explanation of the problem and method with installation instructions. We provide training commands for high-performance results on several datasets.
+
+**NEW MARCH 2023! We have updated the public version of the paper to v3 - the final major update expected. See the v3 release notes below.**
 
 ## Data Format
 We deal with multivariate sequence to sequence problems that have continuous inputs. The most common example is time series forecasting where we make predictions at future ("target") values given recent history ("context"):
@@ -36,15 +35,26 @@ Spacetimeformer processes these longer sequences with a mix of efficient attenti
 
 This repo contains the code for our model as well as several high-quality baselines for common benchmarks and toy datasets.
 
+## Paper v3 Release Notes 
+The Spacetimeformer project began in 2021. The project underwent a major revision in summer 2022, with most of the updates being merged to the public codebase shortly thereafter. However, the updated version of the paper was not released until March 2023. Here we summarize the major changes:
+
+- **Updated Experimental Results and Additional Datasets**. Spacetimeformer's L * N spatiotemporal attention format is super flexible but inherently GPU-intensive. We are now able to scale the method to much larger datasets and model sizes. As part of this process we added many new datasets to the codebase - far more than are mentioned in the paper. The model and training routines now also support exogenous variables and mixed-length context sequences.
+
+- **Implementation Changes and Scalability Improvements**. Learnable position embeddings and other Transformer architecture adjustments including windowed attention for long sequences.
+
+- **Time Series Tricks and Non-Stationarity**. The most common case where timeseries Transformers fail is due to distribution shift between the train and test splits, which often happens in forecasting when long-term trends change the magnitude of test-time sequences. In these situations it [has been shown that simple linear models can outperform larger Transformers](https://arxiv.org/abs/2205.13504). All models in this repo (including Spacetimeformer) now have options for input normalization, seasonal decomposition, and linear output components that greatly reduce this effect.
+
+- **Spatiotemporal Attention's Improvements over ST-GNNs and Connections to Vision Transformers**. The original purpose of our multivariate sequence format was to provide an easy-to-implement alternative to more complex GNN operations that combined the advantages of timeseries Transformers. What was not fully clear at the time is how the full (L * N)^2 attention graph can provide a context-dependent and fully spatiotemporal graph learning mechanism. Since 2021, it has also become much easier to motivate Spacetimeformer as a Vision Transformer analogue for time series forecasting. See Appendix A2 and A3 for detailed discussions.
+
 
 ## Installation and Training
-This repository was written and tested for **python 3.8** and **pytorch 1.11.0**.
+This repository was written and tested for **python 3.8** and **pytorch 1.11.0**. Note that the training process depends on specific (now outdated) versions of [pytorch lightning](https://github.com/Lightning-AI/lightning) and torchmetrics.
 
 ```bash
 git clone https://github.com/QData/spacetimeformer.git
 cd spacetimeformer
 conda create -n spacetimeformer python==3.8
-source activate spacetimeformer
+conda activate spacetimeformer
 pip install -r requirements.txt
 pip install -e .
 ```
@@ -69,6 +79,7 @@ Commandline instructions for each experiment can be found using the format: ```p
 ###### Spatial Forecasting
 - `metr-la` and `pems-bay`: traffic forecasting datasets. We use a very similar setup to [DCRNN](https://github.com/liyaguang/DCRNN).
 - `precip`: daily precipitation data from a latitude-longitude grid over the Continental United States. 
+- `hangzhou`: metro station ridership data.
 
 ###### Time Series Forecasting
 - `toy2`: is the toy dataset mentioned at the beginning of our experiments section. It is heavily based on the toy dataset in [TPA-LSTM](https://arxiv.org/abs/1809.04206.).
@@ -77,6 +88,7 @@ Commandline instructions for each experiment can be found using the format: ```p
 - `exchange`: A common time series benchmark dataset of exchange rates.
 - `weather`: A common time series benchmark dataset of 21 weather indiciators.
 - `ettm1`: A common time series benchmark dataset of "electricity transformer temperatures" and related variables.
+- `traffic`: More of a spatial-temporal benchmark for forecasting traffic conditions in 800+ roadlanes. There is no roadmap/graph provided, so this makes for a good demo of Spacetimeformer's automatic spatial learning. However, sequence lengths can be very long and this dataset has meaningful distribution shift.
 
 ###### Image Completion
 - `mnist`: Highlights the similarity between multivariate forecasting and vision models by completing the right side of an MNIST digit given the left side, where each row is a different variable.
