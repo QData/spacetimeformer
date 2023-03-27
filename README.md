@@ -58,7 +58,7 @@ conda activate spacetimeformer
 pip install -r requirements.txt
 pip install -e .
 ```
-This installs a python package called ``spacetimeformer``.
+This installs a python package called ``spacetimeformer``. The package does not install pytorch or torchvision automatically, and you should [follow the official pytorch installation instructions for 1.11](https://pytorch.org/get-started/previous-versions/) depending on your CUDA software version.
 
 
 Commandline instructions for each experiment can be found using the format: ```python train.py *model* *dataset* -h```. 
