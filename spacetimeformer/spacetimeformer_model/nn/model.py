@@ -374,6 +374,21 @@ class Spacetimeformer(nn.Module):
                 mix=False,
                 dropout_qkv=dropout_qkv,
             )
+        elif attn_str == "flash":
+            assert d_qk == q_v
+            assert (
+                d_qk % 8 == 0
+            ), "Flash Attention uses head sizes that are multiples of 8"
+            Attn = AttentionLayer(
+                attention=partial(
+                    FlashAttention, attention_dropout_dropout_attn_matrix
+                ),
+                d_model=d_model,
+                d_values=d_v,
+                n_heads=n_heads,
+                mix=False,
+                dropout_qkv=dropout_qkv,
+            )
         elif attn_str == "none":
             Attn = None
         else:

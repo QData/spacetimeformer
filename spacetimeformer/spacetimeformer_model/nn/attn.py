@@ -44,6 +44,22 @@ class FullAttention(nn.Module):
             return (V.contiguous(), None)
 
 
+class FlashAttention(nn.Module):
+    def __init__(self, attention_dropout=0.1):
+        try:
+            from flash_attn.flash_attention import FlashAttention as _FlashAttention
+        except ImportError:
+            raise ImportError("Missing flash attention; pip install flash-attn")
+        super().__init__()
+        self.attn = _FlashAttention(attention_dropout=attention_dropout)
+
+    def forward(self, queries, keys, values, attn_mask, output_attn=False):
+        key_padding_mask = ~attn_mask[:, :, 0]
+        qkv = torch.stack((queries, keys, values), dim=-1)
+        output, attn = self.attn(qkv, key_padding_mask=key_padding_mask, causal=False)
+        return output, attn
+
+
 class ProbAttention(nn.Module):
     def __init__(
         self,

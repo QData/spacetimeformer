@@ -408,6 +408,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
                 "full",
                 "prob",
                 "performer",
+                "flash",
                 "none",
             ],
             help="Attention mechanism type.",
@@ -419,6 +420,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
             choices=[
                 "full",
                 "performer",
+                "flash",
                 "none",
             ],
             help="Attention mechanism type.",
@@ -431,6 +433,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
                 "full",
                 "prob",
                 "performer",
+                "flash",
                 "none",
             ],
             help="Attention mechanism type.",
@@ -442,6 +445,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
             choices=[
                 "full",
                 "performer",
+                "flash",
                 "none",
             ],
             help="Attention mechanism type.",
