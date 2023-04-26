@@ -34,22 +34,22 @@ def plot(x_c, y_c, x_t, y_t, idx, title, preds, pad_val=None, conf=None):
         y_t = y_t[yt_mask]
         preds = preds[yt_mask]
 
-    fig, ax = plt.subplots(figsize=(7, 4))
+    fig, ax = plt.subplots(figsize=(7, 3))
     xaxis_c = np.arange(len(y_c))
     xaxis_t = np.arange(len(y_c), len(y_c) + len(y_t))
     context = pd.DataFrame({"xaxis_c": xaxis_c, "y_c": y_c})
     target = pd.DataFrame({"xaxis_t": xaxis_t, "y_t": y_t, "pred": preds})
-    sns.lineplot(data=context, x="xaxis_c", y="y_c", label="Context", linewidth=5.8)
+    sns.lineplot(data=context, x="xaxis_c", y="y_c", label="Context", linewidth=3.8)
     ax.scatter(
         x=target["xaxis_t"], y=target["y_t"], c="grey", label="True", linewidth=1.0
     )
-    sns.lineplot(data=target, x="xaxis_t", y="pred", label="Forecast", linewidth=5.9)
+    sns.lineplot(data=target, x="xaxis_t", y="pred", label="Forecast", linewidth=3.8)
     if conf is not None:
         conf = conf[..., idx]
         ax.fill_between(
             xaxis_t, (preds - conf), (preds + conf), color="orange", alpha=0.1
         )
-    ax.legend(loc="upper left", prop={"size": 12})
+    ax.legend(loc="upper left", prop={"size": 7})
     # ax.set_facecolor("#f0f0f0")
     ax.set_xticks([])
     ax.set_xlabel("")
@@ -100,7 +100,6 @@ class PredictionPlotterCallback(pl.Callback):
 
         imgs = []
         for i in range(preds.shape[0]):
-
             for var_idx, var_name in zip(self.var_idxs, self.var_names):
                 img = plot(
                     x_c[i].cpu().numpy(),
@@ -160,7 +159,6 @@ class ImageCompletionCallback(pl.Callback):
         return completed_imgs
 
     def on_validation_end(self, trainer, model):
-
         if self.mode == "flat":
             completed_imgs = self.complete_flat_img(trainer, model)
         elif self.mode == "left-right":

@@ -43,10 +43,11 @@ class LinearModel(nn.Module):
         return output
 
     def _inner_forward(self, inp, param_num=0):
-        batch = inp.shape[0]
+        batch, length, _ = inp.shape
+        window = min(self.window, length)
         if self.shared_weights:
             inp = rearrange(inp, "batch length dy -> (batch dy) length 1")
-        baseline = (self.weights * inp[:, -self.window :, :]).sum(1) + self.bias
+        baseline = (self.weights[-window:] * inp[:, -window:, :]).sum(1) + self.bias
         if self.shared_weights:
             baseline = rearrange(baseline, "(batch dy) 1 -> batch dy", batch=batch)
         return baseline

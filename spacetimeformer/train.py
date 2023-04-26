@@ -342,6 +342,8 @@ def create_model(config):
             recon_mask_drop_full=config.recon_mask_drop_full,
         )
     elif config.model == "linear":
+        if config.context_points is None and config.max_len is not None:
+            config.context_points = config.max_len
         forecaster = stf.linear_model.Linear_Forecaster(
             d_x=x_dim,
             d_yc=yc_dim,
@@ -813,7 +815,6 @@ def main(args):
         )
 
     if args.wandb and args.model == "spacetimeformer" and args.attn_plot:
-
         callbacks.append(
             stf.plot.AttentionMatrixCallback(
                 test_samples,

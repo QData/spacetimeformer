@@ -328,6 +328,7 @@ class MonashDset:
     @classmethod
     def add_cli(self, parser):
         parser.add_argument("--max_len", type=int, default=1000)
+        parser.add_argument("--context_points", type=int, default=None)
         parser.add_argument("--include", type=str, nargs="+", default="all")
         parser.add_argument(
             "--root_dir", type=str, default="/dccstor/tst03/datasets/monash/"
