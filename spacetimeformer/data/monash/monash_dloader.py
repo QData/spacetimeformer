@@ -10,7 +10,7 @@ from distutils.util import strtobool
 import pandas as pd
 import numpy as np
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset
 from torch.nn.utils.rnn import pad_sequence
 
 import spacetimeformer as stf
@@ -338,7 +338,7 @@ class MonashDset:
         )
 
 
-class MetaMonashDset(Dataset):
+class _MergedMonashDset(Dataset):
     def __init__(self, dsets, split: str):
         assert split in ["train", "val", "test"]
         self.split = split
@@ -370,6 +370,36 @@ class MetaMonashDset(Dataset):
         xc, yc, xt, yt = self._torch(*dset.get_series(idx, self.split))
 
         return xc, yc, xt, yt
+
+
+class MetaMonashDset(Dataset):
+    def __init__(self, dsets, split: str):
+        assert split in ["train", "val", "test"]
+        self.split = split
+        full_dset = _MergedMonashDset(dsets, "test")
+        idxs = list(range(len(full_dset)))
+        random.Random(123).shuffle(idxs)
+        split = len(idxs) // 4
+        train_idxs, held_out_idxs = idxs[split:], idxs[:split]
+        self.train_set = Subset(full_dset, train_idxs)
+        self.test_set = Subset(full_dset, held_out_idxs)
+        self.val_set = Subset(_MergedMonashDset(dsets, "train"), held_out_idxs)
+
+    def __getitem__(self, i):
+        if self.split == "train":
+            return self.train_set[i]
+        elif self.split == "val":
+            return self.val_set[i]
+        else:
+            return self.test_set[i]
+
+    def __len__(self):
+        if self.split == "train":
+            return len(self.train_set)
+        elif self.split == "val":
+            return len(self.val_set)
+        else:
+            return len(self.test_set)
 
 
 def load_monash_dsets(root_dir, max_len, include=["all"]):
@@ -539,9 +569,15 @@ def load_monash_dsets(root_dir, max_len, include=["all"]):
 
 def quick_make_meta_monash(root_dir, max_len, include):
     dsets = load_monash_dsets(root_dir, max_len, include)
-    train_dset = MetaMonashDset(dsets, "train")
-    test_dset = MetaMonashDset(dsets, "test")
-    return train_dset, test_dset
+    train_dset = MetaMonashDset(dsets, "test")
+    generator = torch.Generator().manual_seed(123)
+    train_dset, val_dset = random_split(train_dset, [0.8, 0.2], generator=generator)
+    # val dset is held-out series, early time intervals
+    val_dset.split = "train"
+    # test dset is held-out series, future time intervals
+    test_dset = copy.deepcopy(val_dset)
+    test_dset.split = "test"
+    return train_dset, val_dset, test_dset
 
 
 def pad_left_collate(samples, pad_val):
