@@ -344,6 +344,7 @@ def create_model(config):
     elif config.model == "linear":
         if config.context_points is None and config.max_len is not None:
             config.context_points = config.max_len
+        pad_val = config.pad_val if hasattr(config, "pad_val") else None
         forecaster = stf.linear_model.Linear_Forecaster(
             d_x=x_dim,
             d_yc=yc_dim,
@@ -356,6 +357,7 @@ def create_model(config):
             linear_shared_weights=config.linear_shared_weights,
             use_revin=config.use_revin,
             use_seasonal_decomp=config.use_seasonal_decomp,
+            pad_val=pad_val,
         )
     elif config.model == "s4":
         forecaster = stf.s4_model.S4_Forecaster(
@@ -549,9 +551,10 @@ def create_dset(config):
             batch_size=config.batch_size,
             workers=config.workers,
             overfit=config.overfit,
+            pad_val=config.pad_val,
         )
-        NULL_VAL = -64.0
-        PAD_VAL = -64.0
+        NULL_VAL = config.pad_val
+        PAD_VAL = config.pad_val
     elif config.dset == "ettm1":
         target_cols = ["HUFL", "HULL", "MUFL", "MULL", "LUFL", "LULL", "OT"]
         dset = stf.data.CSVTimeSeries(

@@ -22,6 +22,7 @@ class Linear_Forecaster(stf.Forecaster):
         linear_shared_weights: bool = False,
         use_revin: bool = False,
         use_seasonal_decomp: bool = False,
+        pad_val: float = None,
     ):
         super().__init__(
             d_x=d_x,
@@ -37,7 +38,10 @@ class Linear_Forecaster(stf.Forecaster):
         )
 
         self.model = LinearModel(
-            context_points, shared_weights=linear_shared_weights, d_yt=d_yt
+            context_points,
+            shared_weights=linear_shared_weights,
+            d_yt=d_yt,
+            pad_val=pad_val,
         )
 
     @property

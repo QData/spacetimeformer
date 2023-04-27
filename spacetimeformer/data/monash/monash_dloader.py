@@ -1,4 +1,6 @@
+from typing import List
 from dataclasses import dataclass
+from functools import partial
 import random
 import os
 import glob
@@ -330,6 +332,7 @@ class MonashDset:
         parser.add_argument("--max_len", type=int, default=1000)
         parser.add_argument("--context_points", type=int, default=None)
         parser.add_argument("--include", type=str, nargs="+", default="all")
+        parser.add_argument("--pad_val", type=float, default=-64.0)
         parser.add_argument(
             "--root_dir", type=str, default="/dccstor/tst03/datasets/monash/"
         )
@@ -541,22 +544,37 @@ def quick_make_meta_monash(root_dir, max_len, include):
     return train_dset, test_dset
 
 
-def pad_collate(samples):
-    xc = pad_sequence([x[0] for x in samples], batch_first=True, padding_value=-64.0)
-    yc = pad_sequence([y[1] for y in samples], batch_first=True, padding_value=-64.0)
-    xt = pad_sequence([x[2] for x in samples], batch_first=True, padding_value=-64.0)
-    yt = pad_sequence([y[3] for y in samples], batch_first=True, padding_value=-64.0)
+def pad_left_collate(samples, pad_val):
+    # flip, pad, flip back
+    pad = partial(pad_sequence, batch_first=True, padding_value=pad_val)
+    flip = partial(torch.flip, dims=[-2])
+    xc = pad([flip(x[0]) for x in samples])
+    yc = pad([flip(y[1]) for y in samples])
+    xt = pad([flip(x[2]) for x in samples])
+    yt = pad([flip(y[3]) for y in samples])
+    xc = flip(xc)
+    yc = flip(yc)
+    xt = flip(xt)
+    yt = flip(yt)
     return xc, yc, xt, yt
 
 
-def make_monash_dmodule(root_dir, max_len, include, batch_size, workers, overfit):
+def make_monash_dmodule(
+    root_dir: str,
+    max_len: int,
+    include: List[str],
+    batch_size: int,
+    workers: int,
+    overfit: bool,
+    pad_val: float,
+):
     dsets = load_monash_dsets(root_dir, max_len, include)
     module = stf.data.DataModule(
         MetaMonashDset,
         dataset_kwargs={"dsets": dsets},
         batch_size=batch_size,
         workers=workers,
-        collate_fn=pad_collate,
+        collate_fn=partial(pad_left_collate, pad_val=pad_val),
         overfit=overfit,
     )
     return module

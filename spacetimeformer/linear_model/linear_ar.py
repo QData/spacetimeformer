@@ -7,7 +7,11 @@ from einops import rearrange
 
 class LinearModel(nn.Module):
     def __init__(
-        self, context_points: int, shared_weights: bool = False, d_yt: int = 7
+        self,
+        context_points: int,
+        shared_weights: bool = False,
+        d_yt: int = 7,
+        pad_val: float = None,
     ):
         super().__init__()
 
@@ -30,21 +34,24 @@ class LinearModel(nn.Module):
         self.shared_weights = shared_weights
         self.d_yt = d_yt
 
+        self.pad_val = pad_val
+
     def forward(self, y_c: torch.Tensor, pred_len: int, d_yt: int = None):
-        batch, length, d_yc = y_c.shape
+        batch, _, d_yc = y_c.shape
         d_yt = d_yt or self.d_yt
-
         output = torch.zeros(batch, pred_len, d_yt).to(y_c.device)
-
         for i in range(pred_len):
-            inp = torch.cat((y_c[:, i:, :d_yt], output[:, :i]), dim=1)
+            # inp = torch.cat((y_c[:, min(-self.window + i, 0):, :], output[:, :i, :]), dim=1)
+            inp = torch.cat((y_c, output[:, :i, :]), dim=1)[:, -self.window :, :]
+            if self.pad_val is not None:
+                mask = (inp != self.pad_val).all(-1, keepdims=True)
+                inp *= mask
             output[:, i, :] = self._inner_forward(inp)
-
         return output
 
     def _inner_forward(self, inp, param_num=0):
         batch, length, _ = inp.shape
-        window = min(self.window, length)
+        window = min(length, self.window)
         if self.shared_weights:
             inp = rearrange(inp, "batch length dy -> (batch dy) length 1")
         baseline = (self.weights[-window:] * inp[:, -window:, :]).sum(1) + self.bias
