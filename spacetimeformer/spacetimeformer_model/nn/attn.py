@@ -54,7 +54,11 @@ class FlashAttention(nn.Module):
         self.attn = _FlashAttention(attention_dropout=attention_dropout)
 
     def forward(self, queries, keys, values, attn_mask, output_attn=False):
-        key_padding_mask = ~attn_mask[:, :, 0]
+        if attn_mask is not None:
+            breakpoint()
+            key_padding_mask = ~attn_mask[:, :, 0]
+        else:
+            key_padding_mask = None
         qkv = torch.stack((queries, keys, values), dim=-1)
         output, attn = self.attn(qkv, key_padding_mask=key_padding_mask, causal=False)
         return output, attn

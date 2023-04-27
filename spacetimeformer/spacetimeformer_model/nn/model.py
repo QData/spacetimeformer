@@ -15,6 +15,7 @@ from .attn import (
     ProbAttention,
     AttentionLayer,
     PerformerAttention,
+    FlashAttention,
 )
 from .embed import Embedding
 from .data_dropout import ReconstructionDropout
@@ -331,7 +332,6 @@ class Spacetimeformer(nn.Module):
         performer_attn_kernel: str,
         performer_redraw_interval: int,
     ):
-
         if attn_str == "full":
             # standard full (n^2) attention
             Attn = AttentionLayer(
@@ -375,16 +375,17 @@ class Spacetimeformer(nn.Module):
                 dropout_qkv=dropout_qkv,
             )
         elif attn_str == "flash":
-            assert d_qk == q_v
+            assert d_qk == d_v
             assert (
                 d_qk % 8 == 0
             ), "Flash Attention uses head sizes that are multiples of 8"
             Attn = AttentionLayer(
                 attention=partial(
-                    FlashAttention, attention_dropout_dropout_attn_matrix
+                    FlashAttention, attention_dropout=dropout_attn_matrix
                 ),
                 d_model=d_model,
                 d_values=d_v,
+                d_queries_keys=d_qk,
                 n_heads=n_heads,
                 mix=False,
                 dropout_qkv=dropout_qkv,

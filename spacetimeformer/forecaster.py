@@ -88,7 +88,6 @@ class Forecaster(pl.LightningModule, ABC):
     def loss_fn(
         self, true: torch.Tensor, preds: torch.Tensor, mask: torch.Tensor
     ) -> torch.Tensor:
-
         true = torch.nan_to_num(true)
 
         if self.loss == "mse":
@@ -106,7 +105,6 @@ class Forecaster(pl.LightningModule, ABC):
     def forecasting_loss(
         self, outputs: torch.Tensor, y_t: torch.Tensor, time_mask: int
     ) -> Tuple[torch.Tensor]:
-
         if self.null_value is not None:
             null_mask_mat = y_t != self.null_value
         else:

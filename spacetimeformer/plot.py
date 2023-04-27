@@ -34,16 +34,16 @@ def plot(x_c, y_c, x_t, y_t, idx, title, preds, pad_val=None, conf=None):
         y_t = y_t[yt_mask]
         preds = preds[yt_mask]
 
-    fig, ax = plt.subplots(figsize=(7, 3))
+    fig, ax = plt.subplots(figsize=(8, 3))
     xaxis_c = np.arange(len(y_c))
     xaxis_t = np.arange(len(y_c), len(y_c) + len(y_t))
     context = pd.DataFrame({"xaxis_c": xaxis_c, "y_c": y_c})
     target = pd.DataFrame({"xaxis_t": xaxis_t, "y_t": y_t, "pred": preds})
-    sns.lineplot(data=context, x="xaxis_c", y="y_c", label="Context", linewidth=3.8)
+    sns.lineplot(data=context, x="xaxis_c", y="y_c", label="Context", linewidth=1.8)
     ax.scatter(
-        x=target["xaxis_t"], y=target["y_t"], c="grey", label="True", linewidth=1.0
+        x=target["xaxis_t"], y=target["y_t"], c="grey", label="True", linewidth=0.5
     )
-    sns.lineplot(data=target, x="xaxis_t", y="pred", label="Forecast", linewidth=3.8)
+    sns.lineplot(data=target, x="xaxis_t", y="pred", label="Forecast", linewidth=1.8)
     if conf is not None:
         conf = conf[..., idx]
         ax.fill_between(
