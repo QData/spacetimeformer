@@ -1,1 +1,0 @@
-from .synthetic import SyntheticData

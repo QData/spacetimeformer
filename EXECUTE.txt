@@ -1,0 +1,1 @@
+python spacetimeformer/train.py spacetimeformer metr-la --batch_size 16 --warmup_steps 100 --d_model 20 --d_ff 70 --enc_layers 2 --dec_layers 3 --dropout_emb .1 --dropout_ff .3 --run_name metr-la-spatiotemporal --base_lr 1e-3 --l2_coeff 1e-3 --loss mae --data_path spacetimeformer/data/metr_la --d_qk 30 --d_v 30 --n_heads 10 --patience 10 --decay_factor .8 --wandb --plot
