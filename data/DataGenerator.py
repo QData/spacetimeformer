@@ -7,11 +7,7 @@ import torch
 import matplotlib.pyplot as plt 
 
 class DataGenerator():
-    '''
-    Data generator for Keras (fit_generator). Based on:
-    https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
-    '''
-    
+        
     def __init__(self, dataset_d, extent, n_x, n_y, shift, target_ids, 
                  mesh_grid, split, time_aware=False, group='/2013'):
 
@@ -72,8 +68,7 @@ class DataGenerator():
 
         # Time
         if self.time_aware:
-            X['time'] = self.__get_input_times(*x_extent)
-            Y['time'] = np.empty(X['time'].shape)
+            X['time'], Y['time']= self.__get_input_times(*x_extent)
 
         print("X_%s_time_series: " % self.split, X['time_series'].shape)
         print("X_%s_time: " % self.split, X['time'].shape)
@@ -97,23 +92,40 @@ class DataGenerator():
         - week or weekend in {0, 1},
         - holiday in {0, 1}.
         '''   
-        times = pd.date_range(start=self.__idx_to_datetime(x_l, freq),
+        x_times = pd.date_range(start=self.__idx_to_datetime(x_l, freq),
                               end=self.__idx_to_datetime(x_r-4, freq), freq=freq)
         # Convert to seconds since epoch
-        times_s = times.astype('int64') // 1e9
+        x_times_s = x_times.astype('int64') // 1e9
         day = 24 * 60 * 60
         week = 7 * day
         year = 365.2425 * day
-        time_ret = np.stack([np.sin(times_s * 2 * np.pi / day), #seno de la hora del dia en un periodo de 24 horas pasadas a segundos
-                             np.cos(times_s * 2 * np.pi / day), #coseno de la hora del dia en un periodo de 24 horas pasadas a segundos
-                             np.sin(times_s * 2 * np.pi / week), #seno del dia de la semana en un periodo de 7 dias pasados a segundos
-                             np.cos(times_s * 2 * np.pi / week), #cosenos del dia de la semana en un periodo de 7 dias pasados a segundos
-                             np.sin(times_s * 2 * np.pi / year), #senos del dia del año en un periodo de 1 año pasado a segundos
-                             np.cos(times_s * 2 * np.pi / year), #cosenos del dia del año en un periodo de 1 año pasado a segundos
-                             times.weekday.map(mapper), #si es dia de la semana (0) o fin de semana (1)
-                             times.normalize().isin(self.holidays.Date).astype(int)], #si son vacaciones (1) o no (0)
+        x_time_ret = np.stack([np.sin(x_times_s * 2 * np.pi / day), #seno de la hora del dia en un periodo de 24 horas pasadas a segundos
+                             np.cos(x_times_s * 2 * np.pi / day), #coseno de la hora del dia en un periodo de 24 horas pasadas a segundos
+                             np.sin(x_times_s * 2 * np.pi / week), #seno del dia de la semana en un periodo de 7 dias pasados a segundos
+                             np.cos(x_times_s * 2 * np.pi / week), #cosenos del dia de la semana en un periodo de 7 dias pasados a segundos
+                             np.sin(x_times_s * 2 * np.pi / year), #senos del dia del año en un periodo de 1 año pasado a segundos
+                             np.cos(x_times_s * 2 * np.pi / year), #cosenos del dia del año en un periodo de 1 año pasado a segundos
+                             x_times.weekday.map(mapper), #si es dia de la semana (0) o fin de semana (1)
+                             x_times.normalize().isin(self.holidays.Date).astype(int)], #si son vacaciones (1) o no (0)
                             axis=1)
-        return time_ret
+        y_l, y_r = x_l + self.n_x + self.shift - 1, x_r + self.n_y + self.shift - 1
+        y_times = pd.date_range(start=self.__idx_to_datetime(y_l, freq),
+                              end=self.__idx_to_datetime(y_r-4, freq), freq=freq)
+        # Convert to seconds since epoch
+        y_times_s = y_times.astype('int64') // 1e9
+        day = 24 * 60 * 60
+        week = 7 * day
+        year = 365.2425 * day
+        y_time_ret = np.stack([np.sin(y_times_s * 2 * np.pi / day), #seno de la hora del dia en un periodo de 24 horas pasadas a segundos
+                             np.cos(y_times_s * 2 * np.pi / day), #coseno de la hora del dia en un periodo de 24 horas pasadas a segundos
+                             np.sin(y_times_s * 2 * np.pi / week), #seno del dia de la semana en un periodo de 7 dias pasados a segundos
+                             np.cos(y_times_s * 2 * np.pi / week), #cosenos del dia de la semana en un periodo de 7 dias pasados a segundos
+                             np.sin(y_times_s * 2 * np.pi / year), #senos del dia del año en un periodo de 1 año pasado a segundos
+                             np.cos(y_times_s * 2 * np.pi / year), #cosenos del dia del año en un periodo de 1 año pasado a segundos
+                             y_times.weekday.map(mapper), #si es dia de la semana (0) o fin de semana (1)
+                             y_times.normalize().isin(self.holidays.Date).astype(int)], #si son vacaciones (1) o no (0)
+                            axis=1)
+        return y_time_ret, x_time_ret
 
     def __data_generation(self, dset_path, x_l, x_r, n_repeat=1):
         with tb.open_file(dset_path, mode='r') as h5_file:
@@ -122,11 +134,9 @@ class DataGenerator():
             X = np.stack([x_slc[i:i + self.n_x] for i in range(self.n_instants-3)]) #(train/val/test, 4, 90, 60)
 
             y_l, y_r = x_l + self.n_x + self.shift - 1, x_r + self.n_y + self.shift - 1
-            print("y_r",y_r)
-            print("y_l", y_l)
             y_slc = h5_file.get_node(self.group)[y_l:y_r, :] #(train/val/test, 90, 60)
-            y = np.stack([y_slc[i:i + self.n_y] for i in range(self.n_instants-3)]) #(train/val/test, 4, 90, 60)
-        return X, y
+            Y = np.stack([y_slc[i:i + self.n_y] for i in range(self.n_instants-3)]) #(train/val/test, 4, 90, 60)
+        return X, Y
 """
     def createNPZ(self, split):
         x, y = self.generateData()
@@ -138,13 +148,3 @@ class DataGenerator():
             y_time=y['time']
             )
 """
-def chicago_Torch(self, data: DataGenerator, split: str):
-        assert split in ["train", "val", "test"]
-        print(split, " ", data)
-        if split == "train":
-            tensors = data.datos
-        elif split == "val":
-            tensors = data.datos
-        else:
-            tensors = data.datos
-        tensors = [torch.from_numpy(x).float() for x in tensors]

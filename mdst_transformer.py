@@ -428,7 +428,6 @@ class mdst_transformer():
         val_control = {"val_check_interval": 1.0}
 
         trainer = pl.Trainer(
-            gpus=0,
             callbacks=llamadas,
             logger=logger,
             accelerator="auto",
@@ -453,8 +452,9 @@ class mdst_transformer():
         print(yt_pred)
 
         experiment.finish()
-        
-transformer = mdst_transformer()
-#print("model", transformer.model)
-ind = 0
-transformer.main(ind)
+
+if __name__ == '__main__':   
+    transformer = mdst_transformer()
+    #print("model", transformer.model)
+    ind = 0
+    transformer.main(ind)
