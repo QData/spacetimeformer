@@ -73,18 +73,18 @@ class ReconstructionDropout(nn.Module):
         self.skip_all_drop = skip_all_drop
 
     def forward(self, y):
-        bs, length, dim = y.shape
+        bs, length, map, dim = y.shape
         dev = y.device
 
         if self.training and self.skip_all_drop < 1.0:
             # mask full timesteps
             full_timestep_mask = torch.bernoulli(
-                (1.0 - self.drop_full_timesteps) * torch.ones(bs, length, 1)
+                (1.0 - self.drop_full_timesteps) * torch.ones(bs, length, 1, 1)
             ).to(dev)
 
             # mask each element indp
             standard_mask = torch.bernoulli(
-                (1.0 - self.drop_standard) * torch.ones(bs, length, dim)
+                (1.0 - self.drop_standard) * torch.ones(bs, length, map, dim)
             ).to(dev)
 
             # subsequence mask
@@ -101,7 +101,7 @@ class ReconstructionDropout(nn.Module):
             # at test time the model has seen that before. (I am not sure
             # the usual activation strength adjustment makes sense here)
             skip_all_drop_mask = torch.bernoulli(
-                1.0 - self.skip_all_drop * torch.ones(bs, 1, 1)
+                1.0 - self.skip_all_drop * torch.ones(bs, 1, 1, 1)
             ).to(dev)
 
             mask = 1.0 - (

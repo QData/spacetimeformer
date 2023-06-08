@@ -282,16 +282,20 @@ class mdst_transformer(nn.Module):
             cross_mask_seq=enc_dec_mask_seq,
             output_cross_attn=output_attention,
         )
+        print("dec_out.shape", enc_out.shape)
 
         # forecasting predictions
         forecast_out = self.forecaster(dec_out)
+        print("model_forecast_out", forecast_out.shape, " d_yt", self.d_yt)
         # reconstruction predictions
         recon_out = self.reconstructor(enc_out)
         if self.embed_method == "spatio-temporal":
             # fold flattened spatiotemporal format back into (batch, length, d_yt)
             forecast_out = FoldForPred(forecast_out, dy=self.d_yt)
             recon_out = FoldForPred(recon_out, dy=self.d_yc)
+        print("FoldForPred_forecast_out", forecast_out.shape)
         forecast_out = forecast_out[:, self.start_token_len :, :]
+        print("start_token_len_forecast_out", forecast_out.shape)
 
         if enc_var_idxs is not None:
             # note that detaching the input like this means the transformer layers
@@ -301,6 +305,8 @@ class mdst_transformer(nn.Module):
             classifier_enc_out = self.classifier(enc_out.detach())
         else:
             classifier_enc_out, enc_var_idxs = None, None
+        print("classifier_enc_out.shape", classifier_enc_out.shape)
+        print("enc_var_idxs.shape", enc_var_idxs.shape)
 
         return (
             forecast_out,

@@ -41,6 +41,7 @@ class DataModule(pl.LightningDataModule):
         return DataLoader(
             self.datasetCls(split=split),
             shuffle=shuffle,
+            num_workers=12,
             batch_size=self.batch_size,
             collate_fn=self.collate_fn,
         )

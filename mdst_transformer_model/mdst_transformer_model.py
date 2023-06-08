@@ -18,7 +18,7 @@ class mdst_transformer_forecaster(Forecaster):
         d_yt: int = 1,
         d_x: int = 4,
         max_seq_len: int = None,
-        start_token_len: int = 64,
+        start_token_len: int = 4,
         attn_factor: int = 5,
         d_model: int = 200,
         d_queries_keys=50,
@@ -216,7 +216,7 @@ class mdst_transformer_forecaster(Forecaster):
         d_y = labels.max() + 1
 
         logits = logits.view(-1, d_y)
-
+        task = 'multilabel'
         class_loss = F.cross_entropy(logits, labels)
         acc = torchmetrics.functional.accuracy(
             torch.softmax(logits, dim=1),
@@ -272,12 +272,10 @@ class mdst_transformer_forecaster(Forecaster):
         if len(y_t.shape) == 2:
             y_t = y_t.unsqueeze(-1)
 
-        enc_x = x_c
-        enc_y = y_c
-        dec_x = x_t
-
-        # zero out target sequence
-        dec_y = torch.zeros_like(y_t).to(self.device)
+        enc_x = x_c #encoder context time
+        enc_y = y_c #encoder context space
+        dec_x = x_t #decoder target time
+        dec_y = torch.zeros_like(y_t).to(self.device) #decoder target space
         if self.start_token_len > 0:
             # add "start token" from informer. not really needed anymore...
             dec_y = torch.cat((y_c[:, -self.start_token_len :, :], dec_y), dim=1).to(
@@ -292,12 +290,16 @@ class mdst_transformer_forecaster(Forecaster):
             dec_y=dec_y,
             output_attention=output_attn,
         )
+        print("logits",logits.shape)
+        print("labels",labels.shape)
+
+        print("forecast_output", forecast_output.shape)
 
         if output_attn:
             return forecast_output, recon_output, (logits, labels), attn
         return forecast_output, recon_output, (logits, labels)
 
-    def validation_epoch_end(self, outs):
+    def on_validation_epoch_end(self, outs):
         total = 0
         count = 0
         for dict_ in outs:

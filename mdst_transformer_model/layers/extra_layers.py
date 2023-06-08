@@ -10,7 +10,7 @@ from einops import rearrange, repeat
 
 def Flatten(inp: torch.Tensor) -> torch.Tensor:
     # spatiotemporal flattening of (batch, length, dim) into (batch, length x dim)
-    out = rearrange(inp, "batch len dy -> batch (dy len) 1")
+    out = rearrange(inp, "batch len map dy -> batch (len dy map) 1")
     return out
 
 
@@ -121,11 +121,12 @@ def ReverseShiftBeforeWindow(inp: torch.Tensor, windows: int, offset: int = 2):
 
 
 def Stack(inp: torch.Tensor, dy: int):
-    return rearrange(inp, "batch (dy len) dim -> batch len dy dim", dy=dy)
+    return rearrange(inp, "batch (dy len) dim -> batch len dy dim", dy=dy,)
 
 
 def FoldForPred(inp: torch.Tensor, dy: int) -> torch.Tensor:
-    out = rearrange(inp, "batch (dy len) dim -> dim batch len dy", dy=dy)
+    print("inp", inp.shape)
+    out = rearrange(inp, "batch (dy map len) dim -> dim batch len map dy", dy=dy, map=dy)
     out = out.squeeze(0)
     return out
 

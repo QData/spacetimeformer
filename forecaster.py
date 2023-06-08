@@ -78,7 +78,6 @@ class Forecaster(pl.LightningModule, ABC):
     def loss_fn(
         self, true: torch.Tensor, preds: torch.Tensor, mask: torch.Tensor
     ) -> torch.Tensor:
-
         true = torch.nan_to_num(true)
 
         if self.loss == "mse":
@@ -96,7 +95,6 @@ class Forecaster(pl.LightningModule, ABC):
     def forecasting_loss(
         self, outputs: torch.Tensor, y_t: torch.Tensor, time_mask: int
     ) -> Tuple[torch.Tensor]:
-
         if self.null_value is not None:
             null_mask_mat = y_t != self.null_value
         else:
@@ -120,7 +118,6 @@ class Forecaster(pl.LightningModule, ABC):
         forward_kwargs: dict = {},
     ) -> Tuple[torch.Tensor]:
         x_c, y_c, x_t, y_t = batch
-
         outputs, *_ = self(x_c, y_c, x_t, y_t, **forward_kwargs)
 
         loss, mask = self.forecasting_loss(
@@ -183,8 +180,7 @@ class Forecaster(pl.LightningModule, ABC):
         **forward_kwargs,
     ) -> Tuple[torch.Tensor]:
         x_c, y_c, x_t, y_t = self.nan_to_num(x_c, y_c, x_t, y_t)
-        print(y_t.shape)
-        pred_len, d_yt = y_t.shape
+        _, pred_len, map, d_yt = y_t.shape
 
         y_c = self.revin(y_c, mode="norm")  # does nothing if use_revin = False
 
@@ -195,10 +191,9 @@ class Forecaster(pl.LightningModule, ABC):
         preds, *extra = self.forward_model_pass(
             x_c, seasonal_yc, x_t, y_t, **forward_kwargs
         )
-        baseline = self.linear_model(trend_yc, pred_len=pred_len, d_yt=d_yt)
+        baseline = self.linear_model(trend_yc, pred_len=pred_len, map=map, d_yt=d_yt)
 
         output = self.revin(preds + baseline, mode="denorm")
-
         if extra:
             return (output,) + tuple(extra)
         return (output,)
@@ -289,17 +284,3 @@ class Forecaster(pl.LightningModule, ABC):
                 "monitor": "val/loss",
             },
         }
-
-    @classmethod
-    def add_cli(self, parser):
-        parser.add_argument("--gpus", type=int, nargs="+")
-        parser.add_argument("--l2_coeff", type=float, default=1e-6)
-        parser.add_argument("--learning_rate", type=float, default=1e-4)
-        parser.add_argument("--grad_clip_norm", type=float, default=0)
-        parser.add_argument("--linear_window", type=int, default=0)
-        parser.add_argument("--use_revin", action="store_true")
-        parser.add_argument(
-            "--loss", type=str, default="mse", choices=["mse", "mae", "smape"]
-        )
-        parser.add_argument("--linear_shared_weights", action="store_true")
-        parser.add_argument("--use_seasonal_decomp", action="store_true")

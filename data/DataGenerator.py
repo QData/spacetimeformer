@@ -107,8 +107,14 @@ class DataGenerator():
                              np.cos(x_times_s * 2 * np.pi / year), #cosenos del dia del año en un periodo de 1 año pasado a segundos
                              x_times.weekday.map(mapper), #si es dia de la semana (0) o fin de semana (1)
                              x_times.normalize().isin(self.holidays.Date).astype(int)], #si son vacaciones (1) o no (0)
-                            axis=1)
+                            axis=1) #(train/val/test, 8)
+
+        x_time = np.stack([x_time_ret[i:i + self.n_x] for i in range(self.n_instants-6)]) #(train/val/test, 4, 8)
+
+
+
         y_l, y_r = x_l + self.n_x + self.shift - 1, x_r + self.n_y + self.shift - 1
+
         y_times = pd.date_range(start=self.__idx_to_datetime(y_l, freq),
                               end=self.__idx_to_datetime(y_r-4, freq), freq=freq)
         # Convert to seconds since epoch
@@ -125,17 +131,18 @@ class DataGenerator():
                              y_times.weekday.map(mapper), #si es dia de la semana (0) o fin de semana (1)
                              y_times.normalize().isin(self.holidays.Date).astype(int)], #si son vacaciones (1) o no (0)
                             axis=1)
-        return y_time_ret, x_time_ret
+        y_time = np.stack([y_time_ret[i:i + self.n_y] for i in range(self.n_instants-6)]) #(train/val/test, 4, 8)
+        return x_time, y_time
 
     def __data_generation(self, dset_path, x_l, x_r, n_repeat=1):
         with tb.open_file(dset_path, mode='r') as h5_file:
-            x_slc = h5_file.get_node(self.group)[x_l:x_r, :]  #(train/val/test, 90, 60)
+            x_slc = h5_file.get_node(self.group)[x_l:x_r, :20, :20]  #(train/val/test, 90, 60)
             x_slc = np.repeat(x_slc, n_repeat, axis=0) #(train/val/test, 90, 60)
-            X = np.stack([x_slc[i:i + self.n_x] for i in range(self.n_instants-3)]) #(train/val/test, 4, 90, 60)
+            X = np.stack([x_slc[i:i + self.n_x] for i in range(self.n_instants-6)]) #(train/val/test, 4, 90, 60)
 
             y_l, y_r = x_l + self.n_x + self.shift - 1, x_r + self.n_y + self.shift - 1
-            y_slc = h5_file.get_node(self.group)[y_l:y_r, :] #(train/val/test, 90, 60)
-            Y = np.stack([y_slc[i:i + self.n_y] for i in range(self.n_instants-3)]) #(train/val/test, 4, 90, 60)
+            y_slc = h5_file.get_node(self.group)[y_l:y_r, :20, :20] #(train/val/test, 90, 60)
+            Y = np.stack([y_slc[i:i + self.n_y] for i in range(self.n_instants-6)]) #(train/val/test, 4, 90, 60)
         return X, Y
 """
     def createNPZ(self, split):

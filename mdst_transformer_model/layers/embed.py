@@ -42,18 +42,15 @@ class Embedding(nn.Module):
         time_dim = time_emb_dim * d_x
         self.time_emb = Time2Vec(d_x, embed_dim=time_dim)
 
-        assert position_emb in ["t2v", "abs"]
         self.max_seq_len = max_seq_len
         self.position_emb = position_emb
-        if self.position_emb == "t2v":
-            # standard periodic pos emb but w/ learnable coeffs
-            self.local_emb = Time2Vec(1, embed_dim=d_model + 1)
-        elif self.position_emb == "abs":
-            # lookup-based learnable pos emb
-            assert max_seq_len is not None
-            self.local_emb = nn.Embedding(
-                num_embeddings=max_seq_len, embedding_dim=d_model
-            )
+
+
+
+        assert max_seq_len is not None
+        self.local_emb = nn.Embedding(
+            num_embeddings=max_seq_len, embedding_dim=d_model
+        )
 
         y_emb_inp_dim = d_y if self.method == "temporal" else 1
         self.val_time_emb = nn.Linear(y_emb_inp_dim + time_dim, d_model)
@@ -94,33 +91,25 @@ class Embedding(nn.Module):
             return None
         return (y == self.pad_value).any(-1, keepdim=True)
   
-    def spatio_temporal_embed(self, y: torch.Tensor, x: torch.Tensor):
-        # full spatiotemopral emb method. lots of shape rearrange code
+    def spatio_temporal_embed(self, y: torch.Tensor, x: torch.Tensor): #en este x --> tiempo, y --> espacio
+        # full spatiotemporal emb method. lots of shape rearrange code
         # here to create artifically long (length x dim) spatiotemporal sequence
-        print("y.shape", y.shape)
-        batch, length, dy = y.shape
+        batch, length, map, dy = y.shape
 
         # position emb ("local_emb")
         local_pos = repeat(
-            torch.arange(length).to(x.device), f"length -> {batch} ({dy} length)"
-        )
-        print("local_pos.shape", local_pos.shape)
-        if self.position_emb == "t2v":
-            # periodic pos emb
-            local_emb = self.local_emb(local_pos.float().unsqueeze(-1).float())[
-                :, :, 1:
-            ]
-        elif self.position_emb == "abs":
-            # lookup pos emb
-            local_emb = self.local_emb(local_pos.long())
+            torch.arange(length).to(y.device), f"length -> {batch}  (length {dy} {map})" #multiplica las ultimas tres dimensiones (map1(90)* map2(60) * length(n_x=4)) del array de espacio
+        ) # (256, 21600)
+
+        # lookup pos emb "abs"
+        local_emb = self.local_emb(local_pos.long())
 
         # time emb
         if not self.use_time:
             x = torch.zeros_like(x)
         x = torch.nan_to_num(x)
-        x = repeat(x, f"batch len map x_dim -> batch ({dy} len) map x_dim")
-        print(x.shape)
-        time_emb = self.time_emb(x)
+        x = repeat(x, f"batch len x_dim -> batch ({dy} {map} len) x_dim")
+        time_emb = self.time_emb(x) #([42, 1600, 48])
 
         # protect against NaNs in y, but keep track for Given emb
         true_null = torch.isnan(y)
@@ -128,20 +117,22 @@ class Embedding(nn.Module):
         if not self.use_val:
             y = torch.zeros_like(y)
 
-        # keep track of pre-dropout y for given emb
+        # keep track of pre-dropout x for given emb
         y_original = y.clone()
-        y_original = Flatten(y_original)
+        y_original = Flatten(y_original) #([42, 1600, 1])
         y = self.data_drop(y)
-        y = Flatten(y)
-        mask = self.make_mask(y)
+        y = Flatten(y) #([42, 1600, 1])
+
+        mask = self.make_mask(y) #Si pad_value es None --> mask = None
 
         # concat time_emb, y --> FF --> val_time_emb
-        val_time_inp = torch.cat((time_emb, y), dim=-1)
-        val_time_emb = self.val_time_emb(val_time_inp)
+        val_time_inp = torch.cat((time_emb, y), dim=-1) #([42, 1600, 49])
+        val_time_emb = self.val_time_emb(val_time_inp) #([42, 1600, 200])
+
 
         # "given" embedding
         if self.use_given:
-            given = torch.ones((batch, length, dy)).long().to(x.device)  # start as True
+            given = torch.ones((batch, length, map, dy)).long().to(x.device)  # start as True
             if not self.is_encoder:
                 # mask missing values that need prediction...
                 given[:, self.start_token_len :, :] = 0  # (False)
@@ -150,7 +141,7 @@ class Embedding(nn.Module):
             given *= ~true_null
 
             # flatten now to make the rest easier to figure out
-            given = rearrange(given, "batch len dy -> batch (dy len)")
+            given = rearrange(given, "batch len map dy -> batch (len dy map)")
 
             # use given embeddings to identify data that was dropped out
             given *= (y == y_original).squeeze(-1)
@@ -164,7 +155,7 @@ class Embedding(nn.Module):
         else:
             given_emb = 0.0
 
-        val_time_emb = local_emb + val_time_emb + given_emb
+        val_time_emb = local_emb + val_time_emb + given_emb #([42, 1600, 200]) tiempo
 
         if self.is_encoder:
             for conv in self.downsize_convs:
@@ -173,11 +164,11 @@ class Embedding(nn.Module):
 
         # space embedding
         var_idx = repeat(
-            torch.arange(dy).long().to(x.device), f"dy -> {batch} (dy {length})"
+            torch.arange(dy).long().to(x.device), f"dy -> {batch} (dy {map} {length})"
         )
-        var_idx_true = var_idx.clone()
+        var_idx_true = var_idx.clone() #([42, 1600])
         if not self.use_space:
             var_idx = torch.zeros_like(var_idx)
-        space_emb = self.space_emb(var_idx)
+        space_emb = self.space_emb(var_idx) #([42, 1600, 200]) espacio
 
         return val_time_emb, space_emb, var_idx_true, mask

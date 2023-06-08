@@ -60,19 +60,19 @@ class mdst_transformer():
 
         # Train limits
         ints_in_day = 4 * 24 # intervals in a day (depends on time_gran)
-        train_lim = 7 * ints_in_day #max index for training data ((7 days * num intervals per day)
-        self.train_extent = (0, train_lim) #(0, 672)
-        print("self.train_extent", self.train_extent) #672
+        train_lim = 4 * ints_in_day #max index for training data ((7 days * num intervals per day)
+        self.train_extent = (0, train_lim) #(0, 384)
+        print("self.train_extent", self.train_extent) #384
 
         # Validation limits
-        val_lim = train_lim + 1 * 3 * ints_in_day #max index for validation data (train_lim + (intervals in 3 days))
-        self.val_extent = (train_lim, val_lim)#(672, 960)
-        print("self.val_extent", self.val_extent) #288
+        val_lim = int(train_lim + 1 * 0.5 * ints_in_day) #max index for validation data (train_lim + (intervals in a month))
+        self.val_extent = (train_lim, val_lim)#(384, 432)
+        print("self.val_extent", self.val_extent) # 48
 
         #Test limits
         test_lim = self.__datetime_to_idx(dt.datetime(2020, 3, 16, 0, 0)) #test limit set to begining of COVID pandemic idx = 252576
-        self.test_extent = (val_lim, test_lim) #(960, 1344)
-        print("self.test_extent",self.test_extent)# 384
+        self.test_extent = (val_lim, test_lim) #(432, 576)
+        print("self.test_extent",self.test_extent) #144
 
         self.df_stats = pd.read_csv(os.path.join(self.other_path, 'metrics-per-zone-taxi.csv'), index_col=0) #id de las zonas taxi
 
@@ -118,7 +118,7 @@ class mdst_transformer():
                                         self.time_aware,
                                         self.group,
                                         ).datos
-        train_data = (context_train['time_series'], context_train['time'], target_train['time_series'], target_train['time'])
+        train_data = context_train['time'], context_train['time_series'], target_train['time'], target_train['time_series']
 
         #VALIDATION DATA
         self.split = "val"
@@ -133,7 +133,7 @@ class mdst_transformer():
                                         self.time_aware,
                                         self.group,
                                         ).datos
-        val_data = context_val['time_series'], context_val['time'], target_val['time_series'], target_val['time']
+        val_data = context_val['time'], context_val['time_series'], target_val['time'], target_val['time_series']
         
 
         #TEST DATA
@@ -149,7 +149,7 @@ class mdst_transformer():
                                         self.time_aware,
                                         self.group
                                         ).datos
-        test_data = context_test['time_series'], context_test['time'], target_test['time_series'], target_test['time']
+        test_data = context_test['time'], context_test['time_series'], target_test['time'], target_test['time_series']
         datos = (train_data, val_data, test_data)
         return datos
     
@@ -185,7 +185,8 @@ class mdst_transformer():
             self.xy_bike_g = pd.read_csv(st_path).loc[:, ['lng_int', 'lat_int']].values
             self.lng_bike_g = self.xy_bike_g[:, 0]
             self.lat_bike_g = self.xy_bike_g[:, 1]
-            self.map_shape = tuple([int(aux) for aux in self.kind.split('_')[-2:]])
+            #self.map_shape = tuple([int(aux) for aux in self.kind.split('_')[-2:]])
+            self.map_shape = (20,20)
             offset = 0.002
             xrange = (min(self.lng_taxi.min(), self.lng_bike.min()), max(self.lng_taxi.max(), self.lng_bike.max()))
             yrange = (min(self.lat_taxi.min(), self.lat_bike.min()), max(self.lat_taxi.max(), self.lat_bike.max()))
@@ -215,14 +216,14 @@ class mdst_transformer():
         # Frequency expressed in minutes
         if freq is None:
             freq = int(self.time_gran.replace('m', ''))
-        base = dt.datetime(2020, 3, 2, 0, 0)
+        base = dt.datetime(2020, 3, 10, 0, 0)
         return int((date - base).total_seconds() / (60 * freq))
 
 
     def create_model(self):
         x_dim = 8
-        yc_dim = 60
-        yt_dim = 60
+        yc_dim = 20
+        yt_dim = 20
         assert x_dim is not None
         assert yc_dim is not None
         assert yt_dim is not None
@@ -239,7 +240,7 @@ class mdst_transformer():
             d_yc=yc_dim,
             d_yt=yt_dim,
             max_seq_len=max_seq_len,
-            start_token_len=64,
+            start_token_len=4,
             attn_factor=5,
             d_model=200,
             d_queries_keys=50,
@@ -351,9 +352,7 @@ class mdst_transformer():
         return llamadas
 
 
-    def main(self, ind):
-        ind += 1
-        print("ind", ind)
+    def main(self):
         log_dir = os.getenv("wandb")
         if log_dir is None:
             log_dir = "./output/wandb"
@@ -428,9 +427,10 @@ class mdst_transformer():
         val_control = {"val_check_interval": 1.0}
 
         trainer = pl.Trainer(
+            devices="auto",
             callbacks=llamadas,
             logger=logger,
-            accelerator="auto",
+            accelerator="cpu",
             gradient_clip_val= None,
             gradient_clip_algorithm="norm",
             overfit_batches=20,
@@ -452,9 +452,8 @@ class mdst_transformer():
         print(yt_pred)
 
         experiment.finish()
-
+    
 if __name__ == '__main__':   
     transformer = mdst_transformer()
     #print("model", transformer.model)
-    ind = 0
-    transformer.main(ind)
+    transformer.main()
