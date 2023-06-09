@@ -125,7 +125,6 @@ def Stack(inp: torch.Tensor, dy: int):
 
 
 def FoldForPred(inp: torch.Tensor, dy: int) -> torch.Tensor:
-    print("inp", inp.shape)
     out = rearrange(inp, "batch (dy map len) dim -> dim batch len map dy", dy=dy, map=dy)
     out = out.squeeze(0)
     return out

@@ -216,11 +216,12 @@ class mdst_transformer_forecaster(Forecaster):
         d_y = labels.max() + 1
 
         logits = logits.view(-1, d_y)
-        task = 'multilabel'
         class_loss = F.cross_entropy(logits, labels)
         acc = torchmetrics.functional.accuracy(
             torch.softmax(logits, dim=1),
             labels,
+            task='multiclass',
+            num_classes=20,
         )
         return class_loss, acc
 
@@ -290,18 +291,15 @@ class mdst_transformer_forecaster(Forecaster):
             dec_y=dec_y,
             output_attention=output_attn,
         )
-        print("logits",logits.shape)
-        print("labels",labels.shape)
-
-        print("forecast_output", forecast_output.shape)
 
         if output_attn:
             return forecast_output, recon_output, (logits, labels), attn
         return forecast_output, recon_output, (logits, labels)
 
-    def on_validation_epoch_end(self, outs):
+    def validation_epoch_end(self, outs):
+        print("outs", outs)
         total = 0
-        count = 0
+        count = 00.
         for dict_ in outs:
             if "forecast_loss" in dict_:
                 total += dict_["forecast_loss"].mean()

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import torch.distributions as pyd
 import pandas as pd
-#import cv2
+import cv2
 import random
 import torch
 import wandb
@@ -24,9 +24,23 @@ def _assert_squeeze(x):
 
 
 def plot(x_c, y_c, x_t, y_t, idx, title, preds, pad_val=None, conf=None):
-    y_c = y_c[..., idx]
-    y_t = y_t[..., idx]
-    preds = preds[..., idx]
+    print("x_c antes", x_c.shape)
+    print("y_c antes", y_c.shape)
+    print("x_t antes", x_t.shape)
+    print("y_t antes", y_t.shape)
+    print("preds antes", preds.shape)
+
+
+    y_c = y_c[..., idx, idx]
+    y_t = y_t[..., idx, idx]
+    preds = preds[..., idx, idx]
+
+    print("x_c", x_c.shape)
+    print("y_c", y_c.shape)
+    print("x_t", x_t.shape)
+    print("y_t", y_t.shape)
+    print("preds ", preds.shape)
+
 
     if pad_val is not None:
         y_c = y_c[y_c != pad_val]
@@ -37,6 +51,8 @@ def plot(x_c, y_c, x_t, y_t, idx, title, preds, pad_val=None, conf=None):
     fig, ax = plt.subplots(figsize=(7, 4))
     xaxis_c = np.arange(len(y_c))
     xaxis_t = np.arange(len(y_c), len(y_c) + len(y_t))
+    print("xaxis_c", xaxis_c.shape)
+    print("xaxis_t", xaxis_t.shape)
     context = pd.DataFrame({"xaxis_c": xaxis_c, "y_c": y_c})
     target = pd.DataFrame({"xaxis_t": xaxis_t, "y_t": y_t, "pred": preds})
     sns.lineplot(data=context, x="xaxis_c", y="y_c", label="Context", linewidth=5.8)
@@ -94,13 +110,19 @@ class PredictionPlotterCallback(pl.Callback):
     def on_validation_end(self, trainer, model):
         idxs = [random.sample(range(self.test_data[0].shape[0]), k=self.total_samples)]
         x_c, y_c, x_t, y_t = [i[idxs].detach().to(model.device) for i in self.test_data]
+        print("x_c antesantes", x_c.shape)
+        print("y_c antesantes", y_c.shape)
+        print("x_t antesantes", x_t.shape)
+        print("y_t antesantes", y_t.shape)
+
         with torch.no_grad():
             preds, *_ = model(x_c, y_c, x_t, y_t, **model.eval_step_forward_kwargs)
             preds_std = [None for _ in range(preds.shape[0])]
+        print("preds antesantes", preds.shape)
 
         imgs = []
         for i in range(preds.shape[0]):
-
+            print(i)
             for var_idx, var_name in zip(self.var_idxs, self.var_names):
                 img = plot(
                     x_c[i].cpu().numpy(),
@@ -250,12 +272,12 @@ class AttentionMatrixCallback(pl.Callback):
             )
 
         enc_emb_sim = self._pos_sim_scores(
-            model.spacetimeformer.enc_embedding,
+            model.MDST_Transformer.enc_embedding,
             seq_len=self.test_data[1].shape[1],
             device=model.device,
         )
         dec_emb_sim = self._pos_sim_scores(
-            model.spacetimeformer.dec_embedding,
+            model.MDST_Transformer.dec_embedding,
             seq_len=self.test_data[3].shape[1],
             device=model.device,
         )

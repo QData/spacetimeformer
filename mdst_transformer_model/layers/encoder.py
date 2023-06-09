@@ -123,7 +123,6 @@ class Encoder(nn.Module):
 
     def forward(self, val_time_emb, space_emb, self_mask_seq=None, output_attn=False):
         x = self.emb_dropout(val_time_emb) + self.emb_dropout(space_emb)
-        print("encode_x.shape", x.shape)
 
 
         attns = []

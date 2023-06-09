@@ -257,7 +257,6 @@ class mdst_transformer(nn.Module):
         enc_vt_emb, enc_s_emb, enc_var_idxs, enc_mask_seq = self.enc_embedding(
             y=enc_y, x=enc_x
         )
-
         # encode context sequence
         enc_out, enc_self_attns = self.encoder(
             val_time_emb=enc_vt_emb,
@@ -282,20 +281,16 @@ class mdst_transformer(nn.Module):
             cross_mask_seq=enc_dec_mask_seq,
             output_cross_attn=output_attention,
         )
-        print("dec_out.shape", enc_out.shape)
 
         # forecasting predictions
         forecast_out = self.forecaster(dec_out)
-        print("model_forecast_out", forecast_out.shape, " d_yt", self.d_yt)
         # reconstruction predictions
         recon_out = self.reconstructor(enc_out)
         if self.embed_method == "spatio-temporal":
             # fold flattened spatiotemporal format back into (batch, length, d_yt)
             forecast_out = FoldForPred(forecast_out, dy=self.d_yt)
             recon_out = FoldForPred(recon_out, dy=self.d_yc)
-        print("FoldForPred_forecast_out", forecast_out.shape)
         forecast_out = forecast_out[:, self.start_token_len :, :]
-        print("start_token_len_forecast_out", forecast_out.shape)
 
         if enc_var_idxs is not None:
             # note that detaching the input like this means the transformer layers
@@ -305,8 +300,6 @@ class mdst_transformer(nn.Module):
             classifier_enc_out = self.classifier(enc_out.detach())
         else:
             classifier_enc_out, enc_var_idxs = None, None
-        print("classifier_enc_out.shape", classifier_enc_out.shape)
-        print("enc_var_idxs.shape", enc_var_idxs.shape)
 
         return (
             forecast_out,
@@ -377,56 +370,4 @@ class mdst_transformer(nn.Module):
             raise ValueError(f"Unrecognized attention str code '{attn_str}'")
         return Attn
     
-     # n_x
-    def get_n_x(self):
-        return self.n_x 
-    def set_n_x(self, x):
-        self.n_x = int(x)
-
-    # Number of forecast horizons
-    def get_n_y(self):
-        return self.n_y
-    def set_n_y(self, x):
-        self.n_y = int(x)
-
-    # Map shape
-    def get_map_shape(self):
-        return self.map_shape
-    def set_map_shape(self, x):
-        self.map_shape = x
-
-    # Time aware
-    def get_time_aware(self):
-        return self.time_aware
-    def set_time_aware(self, x):
-        self.time_aware = x
-
-    # Activation function for the last layer
-    def get_act_out(self):
-        return self.act_out
-    def set_act_out(self, x):
-        self.act_out = x
-
-    # Optimizer
-    def get_optimizer(self):
-        return self.optimizer
-    def set_optimizer(self, x):
-        self.optimizer = eval('optimizers.' + x)
-
-    # Loss
-    def get_loss(self):
-        return self.loss
-    def set_loss(self, x):
-        self.loss = x
-
-    # Metrics
-    def get_metrics(self):
-        return self.metrics
-    def set_metrics(self, x):
-        self.metrics = eval(x)
-
-    # Learning rate
-    def get_lr(self):
-        return self.lr
-    def set_lr(self, x):
-        self.lr = float(x)
+    

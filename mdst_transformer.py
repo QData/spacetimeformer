@@ -427,23 +427,23 @@ class mdst_transformer():
         val_control = {"val_check_interval": 1.0}
 
         trainer = pl.Trainer(
-            devices="auto",
             callbacks=llamadas,
             logger=logger,
             accelerator="cpu",
             gradient_clip_val= None,
             gradient_clip_algorithm="norm",
             overfit_batches=20,
+            max_epochs=300,
             accumulate_grad_batches=1,
             sync_batchnorm=True,
             limit_val_batches=1,
             **val_control,
         )
-         # Train
+        # Train
         trainer.fit(forecaster, datamodule=data_module)
 
         # Test
-        trainer.test(datamodule=data_module, ckpt_path=b"est")
+        trainer.test(datamodule=data_module, ckpt_path="best")
 
         # Predict (only here as a demo and test)
         forecaster.to("cuda")
