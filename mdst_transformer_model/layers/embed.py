@@ -93,13 +93,13 @@ class Embedding(nn.Module):
   
     def spatio_temporal_embed(self, y: torch.Tensor, x: torch.Tensor): #en este x --> tiempo, y --> espacio
         # full spatiotemporal emb method. lots of shape rearrange code
-        # here to create artifically long (length x dim) spatiotemporal sequence
-        batch, length, map, dy = y.shape
+        # here to create artifically long (n_x x dim) spatiotemporal sequence
+        batch, n_x, map, dy = y.shape
 
         # position emb ("local_emb")
         local_pos = repeat(
-            torch.arange(length).to(y.device), f"length -> {batch}  (length {dy} {map})" #multiplica las ultimas tres dimensiones (map1(90)* map2(60) * length(n_x=4)) del array de espacio
-        ) # (256, 21600)
+            torch.arange(n_x).to(y.device), f"n_x -> {batch}  (n_x {dy} {map})" #multiplica las ultimas tres dimensiones (map1(90)* map2(60) * n_x(4)) del array de espacio
+        ) # (16, 400)
 
         # lookup pos emb "abs"
         local_emb = self.local_emb(local_pos.long())
@@ -108,9 +108,8 @@ class Embedding(nn.Module):
         if not self.use_time:
             x = torch.zeros_like(x)
         x = torch.nan_to_num(x)
-        x = repeat(x, f"batch len x_dim -> batch ({dy} {map} len) x_dim")
-        time_emb = self.time_emb(x) #([42, 1600, 48])
-
+        x = repeat(x, f"batch n_x dx -> batch ({dy} {map} n_x) dx")
+        time_emb = self.time_emb(x) #([16, 400, 48])
         # protect against NaNs in y, but keep track for Given emb
         true_null = torch.isnan(y)
         y = torch.nan_to_num(y)
@@ -119,20 +118,20 @@ class Embedding(nn.Module):
 
         # keep track of pre-dropout x for given emb
         y_original = y.clone()
-        y_original = Flatten(y_original) #([42, 1600, 1])
+        y_original = Flatten(y_original) #([16, 400, 1])
         y = self.data_drop(y)
-        y = Flatten(y) #([42, 1600, 1])
+        y = Flatten(y) #([16, 400, 1])
 
         mask = self.make_mask(y) #Si pad_value es None --> mask = None
 
         # concat time_emb, y --> FF --> val_time_emb
-        val_time_inp = torch.cat((time_emb, y), dim=-1) #([42, 1600, 49])
-        val_time_emb = self.val_time_emb(val_time_inp) #([42, 1600, 200])
+        val_time_inp = torch.cat((time_emb, y), dim=-1) #([16, 600, 49])
+        val_time_emb = self.val_time_emb(val_time_inp) #([16, 600, 100])
 
 
         # "given" embedding
         if self.use_given:
-            given = torch.ones((batch, length, map, dy)).long().to(x.device)  # start as True
+            given = torch.ones((batch, n_x, map, dy)).long().to(x.device)  # start as True
             if not self.is_encoder:
                 # mask missing values that need prediction...
                 given[:, self.start_token_len :, :] = 0  # (False)
@@ -160,11 +159,11 @@ class Embedding(nn.Module):
         if self.is_encoder:
             for conv in self.downsize_convs:
                 val_time_emb = conv(val_time_emb)
-                length //= 2
+                n_x //= 2
 
         # space embedding
         var_idx = repeat(
-            torch.arange(dy).long().to(x.device), f"dy -> {batch} (dy {map} {length})"
+            torch.arange(dy).long().to(x.device), f"dy -> {batch} (dy {map} {n_x})"
         )
         var_idx_true = var_idx.clone() #([42, 1600])
         if not self.use_space:

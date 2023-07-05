@@ -132,17 +132,17 @@ class Forecaster(pl.LightningModule, ABC):
         x_t: torch.Tensor,
         sample_preds: bool = False,
     ) -> torch.Tensor:
+      
         og_device = y_c.device
         # move to model device
         x_c = x_c.to(self.device).float()
         x_t = x_t.to(self.device).float()
         # move y_c to cpu if it isn't already there, scale, and then move back to the model device
-        y_c = torch.from_numpy(self._scaler(y_c.cpu().numpy())).to(self.device).float()
+        y_c = torch.from_numpy(y_c.cpu().numpy()).to(self.device).float()
         # create dummy y_t of zeros
         y_t = (
-            torch.zeros((x_t.shape[0], x_t.shape[1], self.d_yt)).to(self.device).float()
+            torch.zeros((x_t.shape[0], x_t.shape[1], self.d_yt, self.d_yt)).to(self.device).float()
         )
-
         with torch.no_grad():
             # gradient-free prediction
             normalized_preds, *_ = self.forward(

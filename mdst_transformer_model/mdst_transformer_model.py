@@ -217,11 +217,13 @@ class mdst_transformer_forecaster(Forecaster):
 
         logits = logits.view(-1, d_y)
         class_loss = F.cross_entropy(logits, labels)
+        print("torch.softmax(logits, dim=1)", torch.softmax(logits, dim=1).shape)
+        print("labels", labels.shape)
         acc = torchmetrics.functional.accuracy(
             torch.softmax(logits, dim=1),
             labels,
             task='multiclass',
-            num_classes=20,
+            num_classes=10,
         )
         return class_loss, acc
 

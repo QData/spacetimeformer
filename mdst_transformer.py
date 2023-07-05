@@ -25,7 +25,7 @@ class mdst_transformer():
     def __init__(self, work_path= '.', time_gran='15m', city='chicago',
                  kind='map_90_60', dset_conv='norm_abs',
                  n_x=4, n_y=4, shift=1,
-                 batch_size=2**8, time_aware=True,
+                 batch_size=16, time_aware=True,
                  zone_ids=slice(None),
                  ):
         
@@ -222,8 +222,8 @@ class mdst_transformer():
 
     def create_model(self):
         x_dim = 8
-        yc_dim = 20
-        yt_dim = 20
+        yc_dim = 10
+        yt_dim = 10
         assert x_dim is not None
         assert yc_dim is not None
         assert yt_dim is not None
@@ -240,9 +240,9 @@ class mdst_transformer():
             d_yc=yc_dim,
             d_yt=yt_dim,
             max_seq_len=max_seq_len,
-            start_token_len=4,
+            start_token_len=2,
             attn_factor=5,
-            d_model=200,
+            d_model=100,
             d_queries_keys=50,
             d_values=50,
             n_heads=4,
@@ -403,6 +403,7 @@ class mdst_transformer():
         llamadas = self.create_callbacks(save_dir=log_dir)
 
         test_samples = next(iter(data_module.test_dataloader()))
+        print(len(test_samples))
 
         llamadas.append(
             plot.PredictionPlotterCallback(
@@ -433,7 +434,7 @@ class mdst_transformer():
             gradient_clip_val= None,
             gradient_clip_algorithm="norm",
             overfit_batches=20,
-            max_epochs=300,
+            log_every_n_steps = 20,
             accumulate_grad_batches=1,
             sync_batchnorm=True,
             limit_val_batches=1,
@@ -446,10 +447,11 @@ class mdst_transformer():
         trainer.test(datamodule=data_module, ckpt_path="best")
 
         # Predict (only here as a demo and test)
-        forecaster.to("cuda")
-        xc, yc, xt, _ = test_samples
+        forecaster.to("cpu")
+        xc, yc, xt, yt = test_samples
         yt_pred = forecaster.predict(xc, yc, xt)
-        print(yt_pred)
+        print("Context: ", yt.shape, " ", yt)
+        print("Predictions:", yt_pred.shape, " ", yt_pred)
 
         experiment.finish()
     

@@ -64,7 +64,6 @@ class EncoderLayer(nn.Module):
         if self.global_attention:
             # attention on tokens of every variable together
             x1 = self.norm2(x)
-
             x1 = WindowTime(
                 x1,
                 dy=self.d_yc,

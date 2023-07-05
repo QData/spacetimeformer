@@ -102,7 +102,7 @@ class DataGenerator():
         x_time_ret = np.stack([np.sin(x_times_s * 2 * np.pi / day), #seno de la hora del dia en un periodo de 24 horas pasadas a segundos
                              np.cos(x_times_s * 2 * np.pi / day), #coseno de la hora del dia en un periodo de 24 horas pasadas a segundos
                              np.sin(x_times_s * 2 * np.pi / week), #seno del dia de la semana en un periodo de 7 dias pasados a segundos
-                             np.cos(x_times_s * 2 * np.pi / week), #cosenos del dia de la semana en un periodo de 7 dias pasados a segundos
+                             np.cos(x_times_s * 2 * np.pi / week), #coseno del dia de la semana en un periodo de 7 dias pasados a segundos
                              np.sin(x_times_s * 2 * np.pi / year), #senos del dia del año en un periodo de 1 año pasado a segundos
                              np.cos(x_times_s * 2 * np.pi / year), #cosenos del dia del año en un periodo de 1 año pasado a segundos
                              x_times.weekday.map(mapper), #si es dia de la semana (0) o fin de semana (1)
@@ -136,22 +136,11 @@ class DataGenerator():
 
     def __data_generation(self, dset_path, x_l, x_r, n_repeat=1):
         with tb.open_file(dset_path, mode='r') as h5_file:
-            x_slc = h5_file.get_node(self.group)[x_l:x_r, :20, :20]  #(train/val/test, 90, 60)
+            x_slc = h5_file.get_node(self.group)[x_l:x_r, :10, :10]  #(train/val/test, 90, 60)
             x_slc = np.repeat(x_slc, n_repeat, axis=0) #(train/val/test, 90, 60)
             X = np.stack([x_slc[i:i + self.n_x] for i in range(self.n_instants-6)]) #(train/val/test, 4, 90, 60)
 
             y_l, y_r = x_l + self.n_x + self.shift - 1, x_r + self.n_y + self.shift - 1
-            y_slc = h5_file.get_node(self.group)[y_l:y_r, :20, :20] #(train/val/test, 90, 60)
+            y_slc = h5_file.get_node(self.group)[y_l:y_r, :10, :10] #(train/val/test, 90, 60)
             Y = np.stack([y_slc[i:i + self.n_y] for i in range(self.n_instants-6)]) #(train/val/test, 4, 90, 60)
         return X, Y
-"""
-    def createNPZ(self, split):
-        x, y = self.generateData()
-        np.savez_compressed(
-            os.path.join("data/chicago/clean", "%s.npz" % split),
-            x_ts=x['time_series'],
-            x_time=x['time'],
-            y_ts=y['time_series'],
-            y_time=y['time']
-            )
-"""

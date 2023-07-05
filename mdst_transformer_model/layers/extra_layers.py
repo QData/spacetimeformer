@@ -56,8 +56,7 @@ def WindowTime(
     # stack
     if windows == 1 or inp is None:
         return inp
-    x = rearrange(inp, "batch (dy len) dim -> batch len dy dim", dy=dy)
-
+    x = rearrange(inp, "batch (dy map len) dim -> batch len map dy dim", dy=dy) # (16, (10 * 4), 100) --> (16, 10, 4, 100)
     if window_offset:
         # shift
         b, l, _, dim = x.shape
@@ -67,7 +66,7 @@ def WindowTime(
 
     # window and flatten
     x = rearrange(
-        x, "batch (windows len) dy dim -> (batch windows) (dy len) dim", windows=windows
+        x, "batch (windows len) dy map dim -> (batch windows) (dy map len) dim", windows=windows
     )
     return x
 
