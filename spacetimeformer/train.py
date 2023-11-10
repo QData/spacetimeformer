@@ -12,6 +12,7 @@ import spacetimeformer as stf
 
 _MODELS = ["spacetimeformer", "mtgnn", "heuristic", "lstm", "lstnet", "linear", "s4"]
 
+
 _DSETS = [
     "asos",
     "metr-la",
@@ -32,6 +33,7 @@ _DSETS = [
     "monash",
     "hangzhou",
     "traffic",
+    "crypto",
 ]
 
 
@@ -192,6 +194,10 @@ def create_model(config):
         x_dim = 2
         yc_dim = 862
         yt_dim = 862
+    elif config.dset == "crypto":
+        x_dim = 3
+        yc_dim = 14
+        yt_dim = 14  # or e.g., yt_dim = 5 (open high low close volume)
     assert x_dim is not None
     assert yc_dim is not None
     assert yt_dim is not None
@@ -612,10 +618,42 @@ def create_dset(config):
         time_col_name = "Datetime"
         data_path = config.data_path
         time_features = ["year", "month", "day", "weekday", "hour", "minute"]
+        ignore_cols = "all"
         if config.dset == "asos":
             if data_path == "auto":
                 data_path = "./data/temperature-v1.csv"
             target_cols = ["ABI", "AMA", "ACT", "ALB", "JFK", "LGA"]
+        elif config.dset == "crypto":
+            if data_path == "auto":
+                data_path = "./data/crypto.csv"
+            """
+            In many non-stationary (non-financial) situations it would
+            make sense to add extra y_ctxt variables. In this case
+            data is so non-stationary that it is worth the extra noise
+            to add every variable as an output to include RevIN normlization.
+            """
+            # specify target variables of interest
+            # target_cols = ["Open", "High", "Low", "Close", "Volume"]
+            # ignore_cols = [] # empty list "ignores" the removal of all extra variables
+            target_cols = [
+                "Open",
+                "High",
+                "Low",
+                "Close",
+                "Volume",
+                "BB_Upper_Band",
+                "BB_Lower_Band",
+                "MACD",
+                "MACD_Signal",
+                "MACD_Histogram",
+                "OBV",
+                "RSI",
+                "SD_5",
+                "VWAP",
+            ]
+
+            time_col_name = "Date"
+            time_features = ["minute", "hour", "day"]
         elif config.dset == "solar_energy":
             if data_path == "auto":
                 data_path = "./data/solar_AL_converted.csv"
@@ -650,9 +688,10 @@ def create_dset(config):
         dset = stf.data.CSVTimeSeries(
             data_path=data_path,
             target_cols=target_cols,
-            ignore_cols="all",
+            ignore_cols=ignore_cols,
             time_col_name=time_col_name,
             time_features=time_features,
+            drop_all_nan=True,
             val_split=0.2,
             test_split=0.2,
         )
@@ -813,7 +852,6 @@ def main(args):
         )
 
     if args.wandb and args.model == "spacetimeformer" and args.attn_plot:
-
         callbacks.append(
             stf.plot.AttentionMatrixCallback(
                 test_samples,

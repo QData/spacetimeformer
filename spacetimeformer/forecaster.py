@@ -112,6 +112,7 @@ class Forecaster(pl.LightningModule, ABC):
         else:
             null_mask_mat = torch.ones_like(y_t)
 
+
         # genuine NaN failsafe
         null_mask_mat *= ~torch.isnan(y_t)
 
