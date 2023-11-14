@@ -24,9 +24,9 @@ import wandb
 class mdst_transformer():
     def __init__(self, work_path= '.', time_gran='15m', city='chicago',
                  kind='map_90_60', dset_conv='norm_abs',
-                 n_x=4, n_y=4, shift=1,
+                 n_x=4, n_y=4, shift=4,
                  batch_size=16, time_aware=True,
-                 zone_ids=slice(None),
+                 zone_ids=slice(None), mobility='taxi'
                  ):
         
         self.run_name = 'MDST_Transformer'
@@ -39,17 +39,18 @@ class mdst_transformer():
 
         self.path = os.path.join(self.work_path, 'data','metr_la')
         self.models_path = os.path.join(self.work_path, 'models', city, 'shifted')
-        self.data_path = os.path.join(self.work_path, 'data', city, 'clean')
+        self.data_path = os.path.join('./', 'data', city, 'clean')
         self.other_path = os.path.join(self.work_path, 'data', city, 'other')
 
         self.dataset = '{}_{}_{}_{}.h5'
-        self.dataset_d = {'time_series':[os.path.join(self.data_path, self.dataset.format(time_gran, kind, 'taxi', dset_conv))]}
+        self.dataset_d = {'time_series':[os.path.join(self.data_path, self.dataset.format(time_gran, kind, mobility, dset_conv))]}
+        self.count_d = {'time_series':[os.path.join(self.data_path, self.dataset.format(time_gran, 'flat', mobility, 'count'))]}
 
         self.group = '/2013'
 
         if time_aware:
             self.dataset_d['holidays'] = [os.path.join(self.other_path, 'holidays.csv')]
-        self.city, self.kind, self.dset_conv = city, kind, dset_conv
+        self.city, self.kind, self.dset_conv. self.mobility = city, kind, dset_conv, mobility
 
         # For training and prediction
         self.n_x = n_x
@@ -57,15 +58,15 @@ class mdst_transformer():
         self.shift = shift
         self.batch_size = batch_size
         self.time_aware = time_aware
-
+        
         # Train limits
         ints_in_day = 4 * 24 # intervals in a day (depends on time_gran)
-        train_lim = 4 * ints_in_day #max index for training data ((7 days * num intervals per day)
+        train_lim = (5 * 365 + 1) * ints_in_day #train_lim = 4 * ints_in_day #max index for training data ((7 days * num intervals per day)
         self.train_extent = (0, train_lim) #(0, 384)
         print("self.train_extent", self.train_extent) #384
 
         # Validation limits
-        val_lim = int(train_lim + 1 * 0.5 * ints_in_day) #max index for validation data (train_lim + (intervals in a month))
+        val_lim = train_lim + 1 * 365 * ints_in_day #val_lim = int(train_lim + 1 * 0.5 * ints_in_day) #max index for validation data (train_lim + (intervals in a month))
         self.val_extent = (train_lim, val_lim)#(384, 432)
         print("self.val_extent", self.val_extent) # 48
 
@@ -76,9 +77,9 @@ class mdst_transformer():
 
         self.df_stats = pd.read_csv(os.path.join(self.other_path, 'metrics-per-zone-taxi.csv'), index_col=0) #id de las zonas taxi
 
-        with tb.open_file('./data/chicago/clean/15m_flat_taxi_count.h5', mode='r') as h5_taxi:
-            t = h5_taxi.get_node('/2013')[:].mean(axis=0)
-        self.tnorm = (t - t.min()) / (t.max() - t.min()) 
+        with tb.open_file(self.count_d['time_series'][0], mode='r') as h5_tb:
+            tb = h5_tb.get_node('/2013')[:].mean(axis=0)
+        self.tbnorm = (tb - tb.min()) / (tb.max() - tb.min()) 
 
         # Target variable
         self.target_d = {'flat_count': 'Trip counts',
@@ -216,7 +217,7 @@ class mdst_transformer():
         # Frequency expressed in minutes
         if freq is None:
             freq = int(self.time_gran.replace('m', ''))
-        base = dt.datetime(2020, 3, 10, 0, 0)
+        base = dt.datetime(2013, 1, 1, 0, 0)
         return int((date - base).total_seconds() / (60 * freq))
 
 
@@ -435,6 +436,7 @@ class mdst_transformer():
             gradient_clip_algorithm="norm",
             overfit_batches=20,
             log_every_n_steps = 20,
+            max_epochs=1,
             accumulate_grad_batches=1,
             sync_batchnorm=True,
             limit_val_batches=1,
@@ -450,12 +452,29 @@ class mdst_transformer():
         forecaster.to("cpu")
         xc, yc, xt, yt = test_samples
         yt_pred = forecaster.predict(xc, yc, xt)
-        print("Context: ", yt.shape, " ", yt)
-        print("Predictions:", yt_pred.shape, " ", yt_pred)
-
+        if self.mobility == 'taxi':
+            open = np.empty((yt_pred.shape[0], self.n_y, self.xy_taxi.shape[0]))
+        elif self.mobility == 'bike':
+            open = np.empty((yt_pred.shape[0], self.n_y, self.xy_taxi.shape[0]))
+        else:
+            open = None
+            print("Unknown mobility type. Must be 'taxi' or 'bike'.")
+        n_zones = (self.xy_taxi.shape[0], self.xy_bike_g.shape[0])
+        hours = np.empty((yt_pred.shape[0], self.n_y), dtype=object)
+        with tb.open_file(self.count_d['time_series'][0], mode='r') as h5_tb:
+            for horizon in self.n_y:
+                y_l = self.start_id + self.n_x + self.shift + horizon - 1
+                slc = slice(y_l, y_l + yt_pred.shape[0])
+                hours[:, horizon] = np.array([self.__idx_to_datetime(id_t, 2013) for id_t in range(slc.start, slc.stop)])
+                open[:, horizon] = h5_tb.get_node('/2013')[slc, self.zone_ids]
+                print("Objetivo: ", yt.shape, " ", yt)
+                print("Predictions:", yt_pred.shape, " ", yt_pred)
+            print(hours)
         experiment.finish()
     
 if __name__ == '__main__':   
+
     transformer = mdst_transformer()
     #print("model", transformer.model)
-    transformer.main()
+    for shift in transformer.shift:
+        transformer.main()
