@@ -4,11 +4,10 @@ import sys
 import warnings
 import os
 import uuid
-
 import pytorch_lightning as pl
 import torch
-
 import spacetimeformer as stf
+import pickle
 
 _MODELS = ["spacetimeformer", "mtgnn", "heuristic", "lstm", "lstnet", "linear", "s4"]
 
@@ -19,6 +18,7 @@ _DSETS = [
     "exchange",
     "precip",
     "toy2",
+    "sinewaves",
     "solar_energy",
     "syn",
     "mnist",
@@ -105,6 +105,8 @@ def create_parser():
     parser.add_argument("--accumulate", type=int, default=1)
     parser.add_argument("--val_check_interval", type=float, default=1.0)
     parser.add_argument("--limit_val_batches", type=float, default=1.0)
+    parser.add_argument("--max_epochs", type=int)
+    parser.add_argument("--log_every_n_steps", type=int, default=50)
     parser.add_argument("--no_earlystopping", action="store_true")
     parser.add_argument("--patience", type=int, default=5)
     parser.add_argument(
@@ -119,6 +121,9 @@ def create_parser():
 
 
 def create_model(config):
+    # x_dim time embedding dimension   
+    # yc_dim number of variables in context
+    # yt_dim number of variables in target
     x_dim, yc_dim, yt_dim = None, None, None
     if config.dset == "metr-la":
         x_dim = 2
@@ -148,6 +153,10 @@ def create_model(config):
         x_dim = 6
         yc_dim = 20
         yt_dim = 20
+    elif config.dset == "sinewaves":
+        x_dim = 6      
+        yc_dim = 3     
+        yt_dim = 3     
     elif config.dset == "syn":
         x_dim = 5
         yc_dim = 20
@@ -448,6 +457,7 @@ def create_dset(config):
         )
         INV_SCALER = dset.reverse_scaling
         SCALER = dset.apply_scaling
+        SCALER_OBJ = dset.scaler_obj
     elif config.dset in ["mnist", "cifar"]:
         if config.dset == "mnist":
             config.target_points = 28 - config.context_points
@@ -575,6 +585,7 @@ def create_dset(config):
         )
         INV_SCALER = dset.reverse_scaling
         SCALER = dset.apply_scaling
+        SCALER_OBJ = dset.scaler_obj
         NULL_VAL = None
         # PAD_VAL = -32.0
         PLOT_VAR_NAMES = target_cols
@@ -605,6 +616,7 @@ def create_dset(config):
         )
         INV_SCALER = dset.reverse_scaling
         SCALER = dset.apply_scaling
+        SCALER_OBJ = dset.scaler_obj
         NULL_VAL = None
         PLOT_VAR_NAMES = ["OT", "p (mbar)", "raining (s)"]
         PLOT_VAR_IDXS = [20, 0, 15]
@@ -627,6 +639,11 @@ def create_dset(config):
                 else:
                     raise ValueError(f"Unrecognized toy dataset {config.dset}")
             target_cols = [f"D{i}" for i in range(1, 21)]
+        elif "sinewaves" in config.dset:
+            target_cols = [
+                "Sine Wave 1","Sine Wave 2","Sine Wave 3"
+            ]
+            data_path = "./spacetimeformer/data/sine_waves_with_dates.csv"
         elif config.dset == "exchange":
             if data_path == "auto":
                 data_path = "./data/exchange_rate_converted.csv"
@@ -670,6 +687,7 @@ def create_dset(config):
         )
         INV_SCALER = dset.reverse_scaling
         SCALER = dset.apply_scaling
+        SCALER_OBJ = dset.scaler_obj
         NULL_VAL = None
 
     return (
@@ -680,6 +698,7 @@ def create_dset(config):
         PLOT_VAR_IDXS,
         PLOT_VAR_NAMES,
         PAD_VAL,
+        SCALER_OBJ,
     )
 
 
@@ -770,7 +789,16 @@ def main(args):
         plot_var_idxs,
         plot_var_names,
         pad_val,
+        scaler_obj,
     ) = create_dset(args)
+
+    # save scaler for inference post-training
+    with open('scaler_method.pkl', 'wb') as file:
+        pickle.dump(scaler, file)
+    with open('fitted_scaler_obj.pkl', 'wb') as file:
+        pickle.dump(scaler_obj, file)
+
+    assert (len(data_module.test_dataloader()) > 0), "The DataLoader should not be empty, check the Dataset __init__ and __getitem__"
 
     # Model
     args.null_value = null_val
@@ -840,8 +868,10 @@ def main(args):
         gradient_clip_algorithm="norm",
         overfit_batches=20 if args.debug else 0,
         accumulate_grad_batches=args.accumulate,
-        sync_batchnorm=True,
+        sync_batchnorm=False, #set False on CPU, else "SyncBatchNorm layers only work with GPU modules"
         limit_val_batches=args.limit_val_batches,
+        max_epochs=args.max_epochs,
+        log_every_n_steps=args.log_every_n_steps,
         **val_control,
     )
 

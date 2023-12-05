@@ -43,7 +43,7 @@ class CSVTimeSeries:
 
         if raw_df is None:
             self.data_path = data_path
-            assert os.path.exists(self.data_path)
+            assert os.path.exists(self.data_path), f"data_path not found: ${self.data_path}"
             raw_df = pd.read_csv(
                 self.data_path,
                 **read_csv_kwargs,
@@ -212,6 +212,10 @@ class CSVTimeSeries:
     def test_data(self):
         return self._test_data
 
+    @property
+    def scaler_obj(self):
+        return self._scaler
+
     def length(self, split):
         return {
             "train": len(self.train_data),
@@ -240,6 +244,14 @@ class CSVTorchDset(Dataset):
         self.target_points = target_points
         self.time_resolution = time_resolution
 
+        assert (
+            self.series.length(split) + time_resolution * (-target_points - context_points) + 1 > 0
+        ), (f"Dataset length for split {split} is negative. Check time_resolution, context_points, and target_points.\n"
+        f"Dataset length: {self.series.length(split)}\n"
+        f"Target points: {target_points}\n"
+        f"Context points: {context_points}\n"
+        f"Time Resolution: {time_resolution}")
+
         self._slice_start_points = [
             i
             for i in range(
@@ -249,6 +261,7 @@ class CSVTorchDset(Dataset):
                 + 1,
             )
         ]
+        print(f"${split} dataset length: {len(self)}")
 
     def __len__(self):
         return len(self._slice_start_points)

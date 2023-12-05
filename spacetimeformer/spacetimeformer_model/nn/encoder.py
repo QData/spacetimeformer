@@ -53,6 +53,11 @@ class EncoderLayer(nn.Module):
         if self.local_attention:
             # attention on tokens of each variable ind.
             x1 = self.norm1(x)
+            # assert that second dim of x1 is a multiple of d_yc
+            assert (x1.shape[1] % self.d_yc == 0), (
+                "x1.shape[1] is not a multiple of d_yc. Check that train arg yc_dim matches the number of variables"
+                f"x1.shape[1] = {x1.shape[1]}, d_yc = {self.d_yc}"
+            )
             x1 = Localize(x1, self.d_yc)
             # TODO: localize self_mask_seq
             x1, _ = self.local_attention(
