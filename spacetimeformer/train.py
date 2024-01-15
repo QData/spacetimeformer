@@ -640,6 +640,33 @@ def create_dset(config):
                 "New Zealand",
                 "Singapore",
             ]
+        elif config.dset == "stocks":
+            if data_path == 'auto':
+                data_path = "./data/"
+            target_cols = ['open', 'high', 'low', 'Close', 'vclose', 'vopen', 'vhigh', 'vlow',
+                           'VIX', 'SPY', 'TNX', 'rsi14', 'rsi9', 'rsi24', 'MACD5355macddiff',
+                           'MACD5355macddiffslope', 'MACD5355macd', 'MACD5355macdslope',
+                           'MACD5355macdsig', 'MACD5355macdsigslope', 'MACD12269macddiff',
+                           'MACD12269macddiffslope', 'MACD12269macd', 'MACD12269macdslope',
+                           'MACD12269macdsig', 'MACD12269macdsigslope', 'lowTail', 'highTail',
+                           'openTail', 'IntradayBar', 'IntradayRange', 'CloseOverSMA5',
+                           'CloseOverSMA10', 'CloseOverSMA12', 'CloseOverSMA20', 'CloseOverSMA30',
+                           'CloseOverSMA65', 'CloseOverSMA50', 'CloseOverSMA100',
+                           'CloseOverSMA200', 'VolOverSMA5', 'VolOverSMA10', 'VolOverSMA12',
+                           'VolOverSMA20', 'VolOverSMA30', 'VolOverSMA65', 'VolOverSMA50',
+                           'VolOverSMA100', 'VolOverSMA200', 'Ret1day', 'Ret4day', 'Ret8day',
+                           'Ret12day', 'Ret24day', 'Ret72day', 'Ret240day', 'RSC', 'bands_l',
+                           'bands_u', 'ADX', 'cloudA', 'cloudB', 'closeVsIchA', 'closeVsIchB',
+                           'IchAvIchB', 'CondVol_1', 'CondVol_4', 'CondVol_8', 'CondVol_12',
+                           'CondVol_24', 'CondVol_72', 'CondVol_240', 'CV1vCV4', 'CV4vCV8',
+                           'CV8vCV12', 'CV12vCV24', 'CV8vCV24', 'CV24vCV240', 'RSC_VIX',
+                           'RSC_VIX_IV', 'RSC_VIX_real', 'RSC_VIX_IV_real', 'RSC_IV_gar',
+                           'close_spy_corr22', 'close_tnx_corr22', 'vclose_VIX_corr22',
+                           'garch_IV_corr22', 'close_spy_corr65', 'close_tnx_corr65',
+                           'vclose_VIX_corr65', 'garch_IV_corr65', 'close_spy_corr252',
+                           'close_tnx_corr252', 'vclose_VIX_corr252', 'garch_IV_corr252']
+
+
         elif config.dset == "traffic":
             if data_path == "auto":
                 data_path = "./data/traffic.csv"
