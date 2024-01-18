@@ -9,6 +9,8 @@ import pytorch_lightning as pl
 import torch
 
 import spacetimeformer as stf
+from TimeSeriesDataset import TimeSeriesDataset
+from torch.utils.data import DataLoader
 
 _MODELS = ["spacetimeformer", "mtgnn", "heuristic", "lstm", "lstnet", "linear", "s4"]
 
@@ -16,6 +18,7 @@ _DSETS = [
     "asos",
     "metr-la",
     "pems-bay",
+    "stocks",
     "exchange",
     "precip",
     "toy2",
@@ -140,6 +143,10 @@ def create_model(config):
         x_dim = 6
         yc_dim = 137
         yt_dim = 137
+    elif config.dset == "stocks":
+        x_dim = 95
+        yc_dim = 95 # Can reduce to specific features. i.e you could forecast only 'Close' (yc_dim=1)
+        yt_dim = 95
     elif config.dset == "exchange":
         x_dim = 6
         yc_dim = 8
@@ -640,6 +647,43 @@ def create_dset(config):
                 "New Zealand",
                 "Singapore",
             ]
+
+        elif config.dset == "stocks":
+            if config.phase == "train":
+                data_path = './data/train'
+            elif config.phase == "test":
+                data_path = './data/test'
+            else:
+                data_path = './data/oos'  # Assume 'oos' is for out-of-sample or validation
+
+            # data_module = TimeSeriesDataset(data_folder=data_path, context_length=config.context_points, forecast_length=config.target_points)
+            # data_loader = DataLoader(data_module, batch_size=config.batch_size, shuffle=True)
+            data_module = TimeSeriesDataset(data_folder=data_path, context_length=config.context_points, forecast_length=config.target_points)
+            data_loader = DataLoader(data_module, batch_size=config.batch_size, shuffle=True if config.phase == "train" else False)
+            target_cols = ['open', 'high', 'low', 'Close', 'vclose', 'vopen', 'vhigh', 'vlow',
+                           'VIX', 'SPY', 'TNX', 'rsi14', 'rsi9', 'rsi24', 'MACD5355macddiff',
+                           'MACD5355macddiffslope', 'MACD5355macd', 'MACD5355macdslope',
+                           'MACD5355macdsig', 'MACD5355macdsigslope', 'MACD12269macddiff',
+                           'MACD12269macddiffslope', 'MACD12269macd', 'MACD12269macdslope',
+                           'MACD12269macdsig', 'MACD12269macdsigslope', 'lowTail', 'highTail',
+                           'openTail', 'IntradayBar', 'IntradayRange', 'CloseOverSMA5',
+                           'CloseOverSMA10', 'CloseOverSMA12', 'CloseOverSMA20', 'CloseOverSMA30',
+                           'CloseOverSMA65', 'CloseOverSMA50', 'CloseOverSMA100',
+                           'CloseOverSMA200', 'VolOverSMA5', 'VolOverSMA10', 'VolOverSMA12',
+                           'VolOverSMA20', 'VolOverSMA30', 'VolOverSMA65', 'VolOverSMA50',
+                           'VolOverSMA100', 'VolOverSMA200', 'Ret1day', 'Ret4day', 'Ret8day',
+                           'Ret12day', 'Ret24day', 'Ret72day', 'Ret240day', 'RSC', 'bands_l',
+                           'bands_u', 'ADX', 'cloudA', 'cloudB', 'closeVsIchA', 'closeVsIchB',
+                           'IchAvIchB', 'CondVol_1', 'CondVol_4', 'CondVol_8', 'CondVol_12',
+                           'CondVol_24', 'CondVol_72', 'CondVol_240', 'CV1vCV4', 'CV4vCV8',
+                           'CV8vCV12', 'CV12vCV24', 'CV8vCV24', 'CV24vCV240', 'RSC_VIX',
+                           'RSC_VIX_IV', 'RSC_VIX_real', 'RSC_VIX_IV_real', 'RSC_IV_gar',
+                           'close_spy_corr22', 'close_tnx_corr22', 'vclose_VIX_corr22',
+                           'garch_IV_corr22', 'close_spy_corr65', 'close_tnx_corr65',
+                           'vclose_VIX_corr65', 'garch_IV_corr65', 'close_spy_corr252',
+                           'close_tnx_corr252', 'vclose_VIX_corr252', 'garch_IV_corr252']
+
+
         elif config.dset == "traffic":
             if data_path == "auto":
                 data_path = "./data/traffic.csv"
@@ -671,17 +715,28 @@ def create_dset(config):
         INV_SCALER = dset.reverse_scaling
         SCALER = dset.apply_scaling
         NULL_VAL = None
+    if config.dset =='stocks':
 
-    return (
-        DATA_MODULE,
-        INV_SCALER,
-        SCALER,
-        NULL_VAL,
-        PLOT_VAR_IDXS,
-        PLOT_VAR_NAMES,
-        PAD_VAL,
-    )
-
+        return (
+            data_loader,
+            INV_SCALER,
+            SCALER,
+            NULL_VAL,
+            PLOT_VAR_IDXS,
+            PLOT_VAR_NAMES,
+            PAD_VAL,
+        )
+    else:
+        return (
+            DATA_MODULE,
+            INV_SCALER,
+            SCALER,
+            NULL_VAL,
+            PLOT_VAR_IDXS,
+            PLOT_VAR_NAMES,
+            PAD_VAL,
+        )
+# data_loader
 
 def create_callbacks(config, save_dir):
     filename = f"{config.run_name}_" + str(uuid.uuid1()).split("-")[0]
@@ -728,142 +783,80 @@ def create_callbacks(config, save_dir):
 
 
 def main(args):
-    log_dir = os.getenv("STF_LOG_DIR")
-    if log_dir is None:
-        log_dir = "./data/STF_LOG_DIR"
-        print(
-            "Using default wandb log dir path of ./data/STF_LOG_DIR. This can be adjusted with the environment variable `STF_LOG_DIR`"
-        )
+    # Initialization and Setup
+    log_dir = os.getenv("STF_LOG_DIR", "./data/STF_LOG_DIR")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
     if args.wandb:
         import wandb
-
         project = os.getenv("STF_WANDB_PROJ")
         entity = os.getenv("STF_WANDB_ACCT")
-        assert (
-            project is not None and entity is not None
-        ), "Please set environment variables `STF_WANDB_ACCT` and `STF_WANDB_PROJ` with \n\
-            your wandb user/organization name and project title, respectively."
-        experiment = wandb.init(
-            project=project,
-            entity=entity,
-            config=args,
-            dir=log_dir,
-            reinit=True,
-        )
+        experiment = wandb.init(project=project, entity=entity, config=args, dir=log_dir, reinit=True)
         config = wandb.config
         wandb.run.name = args.run_name
         wandb.run.save()
-        logger = pl.loggers.WandbLogger(
-            experiment=experiment,
-            save_dir=log_dir,
-        )
+        logger = pl.loggers.WandbLogger(experiment=experiment, save_dir=log_dir)
 
-    # Dset
-    (
-        data_module,
-        inv_scaler,
-        scaler,
-        null_val,
-        plot_var_idxs,
-        plot_var_names,
-        pad_val,
-    ) = create_dset(args)
-
-    # Model
-    args.null_value = null_val
-    args.pad_value = pad_val
-    forecaster = create_model(args)
-    forecaster.set_inv_scaler(inv_scaler)
-    forecaster.set_scaler(scaler)
-    forecaster.set_null_value(null_val)
-
-    # Callbacks
-    callbacks = create_callbacks(args, save_dir=log_dir)
-    test_samples = next(iter(data_module.test_dataloader()))
-
-    if args.wandb and args.plot:
-        callbacks.append(
-            stf.plot.PredictionPlotterCallback(
-                test_samples,
-                var_idxs=plot_var_idxs,
-                var_names=plot_var_names,
-                pad_val=pad_val,
-                total_samples=min(args.plot_samples, args.batch_size),
-            )
-        )
-
-    if args.wandb and args.dset in ["mnist", "cifar"] and args.plot:
-        callbacks.append(
-            stf.plot.ImageCompletionCallback(
-                test_samples,
-                total_samples=min(16, args.batch_size),
-                mode="left-right" if config.dset == "mnist" else "flat",
-            )
-        )
-
-    if args.wandb and args.dset == "copy" and args.plot:
-        callbacks.append(
-            stf.plot.CopyTaskCallback(
-                test_samples,
-                total_samples=min(16, args.batch_size),
-            )
-        )
-
-    if args.wandb and args.model == "spacetimeformer" and args.attn_plot:
-
-        callbacks.append(
-            stf.plot.AttentionMatrixCallback(
-                test_samples,
-                layer=0,
-                total_samples=min(16, args.batch_size),
-            )
-        )
-
-    if args.wandb:
-        config.update(args)
-        logger.log_hyperparams(config)
-
-    if args.val_check_interval <= 1.0:
-        val_control = {"val_check_interval": args.val_check_interval}
+    # Data Preparation
+    if args.dset == "stocks":
+        # Custom DataLoader for 'stocks'
+        train_loader = DataLoader(TimeSeriesDataset(data_folder='./data/train', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=True)
+        test_loader = DataLoader(TimeSeriesDataset(data_folder='./data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
+        oos_loader = DataLoader(TimeSeriesDataset(data_folder='./data/oos', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
     else:
-        val_control = {"check_val_every_n_epoch": int(args.val_check_interval)}
+        # Standard DataModule for other datasets
+        data_module, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
 
-    trainer = pl.Trainer(
-        gpus=args.gpus,
-        callbacks=callbacks,
-        logger=logger if args.wandb else None,
-        accelerator="dp",
-        gradient_clip_val=args.grad_clip_norm,
-        gradient_clip_algorithm="norm",
-        overfit_batches=20 if args.debug else 0,
-        accumulate_grad_batches=args.accumulate,
-        sync_batchnorm=True,
-        limit_val_batches=args.limit_val_batches,
-        **val_control,
-    )
+    # Model Training and Evaluation
+    forecaster = create_model(args)
 
-    # Train
-    trainer.fit(forecaster, datamodule=data_module)
+    if args.dset == "stocks":
+        # Custom Training Loop for 'stocks'
+        for epoch in range(args.epochs):
+            1+1
+            # Training Phase
+            # Include your training logic here using train_loader
 
-    # Test
-    trainer.test(datamodule=data_module, ckpt_path="best")
+            # Validation Phase (Optional)
+            # Include your validation logic here using test_loader
 
-    # Predict (only here as a demo and test)
-    # forecaster.to("cuda")
-    # xc, yc, xt, _ = test_samples
-    # yt_pred = forecaster.predict(xc, yc, xt)
+            # Out-of-Sample Testing Phase (Optional)
+            # Include your testing logic here using oos_loader
+    else:
+        # Standard Training with PyTorch Lightning for other datasets
+        forecaster.set_inv_scaler(inv_scaler)
+        forecaster.set_scaler(scaler)
+        forecaster.set_null_value(null_val)
 
+        # Callbacks and Trainer Configuration
+        callbacks = create_callbacks(args, save_dir=log_dir)
+        trainer = pl.Trainer(
+            gpus=args.gpus,
+            callbacks=callbacks,
+            logger=logger if args.wandb else None,
+            # ... additional trainer configurations ...
+        )
+
+        # Fitting the model
+        trainer.fit(forecaster, datamodule=data_module)
+
+        # Testing the model
+        trainer.test(datamodule=data_module, ckpt_path="best")
+
+    # WANDB Experiment Finish (if applicable)
     if args.wandb:
-        experiment.finish()
-
+        wandb.finish()
 
 if __name__ == "__main__":
-    # CLI
     parser = create_parser()
     args = parser.parse_args()
+    main(args)
 
-    for trial in range(args.trials):
-        main(args)
+# if __name__ == "__main__":
+#     # CLI
+#     parser = create_parser()
+#     args = parser.parse_args()
+
+#     for trial in range(args.trials):
+#         main(args)
