@@ -814,6 +814,7 @@ def main(args):
     if args.dset == "stocks":
         # Custom Training Loop for 'stocks'
         for epoch in range(args.epochs):
+            1+1
             # Training Phase
             # Include your training logic here using train_loader
 
@@ -839,6 +840,7 @@ def main(args):
 
         # Fitting the model
         trainer.fit(forecaster, datamodule=data_module)
+
         # Testing the model
         trainer.test(datamodule=data_module, ckpt_path="best")
 
@@ -846,12 +848,10 @@ def main(args):
     if args.wandb:
         wandb.finish()
 
-
-    # if args.wandb:
-    #     experiment.finish()
 if __name__ == "__main__":
     parser = create_parser()
-    args = parser.parse
+    args = parser.parse_args()
+    main(args)
 
 # if __name__ == "__main__":
 #     # CLI
